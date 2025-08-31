@@ -10,6 +10,7 @@ export class BattleScene extends Phaser.Scene {
   private opponentLyrics: LyricsPattern[] = []; // For MC Rookie
 
   // UI Elements
+  private battleStartText?: Phaser.GameObjects.Text;
   private playerScoreText!: Phaser.GameObjects.Text;
   private opponentScoreText!: Phaser.GameObjects.Text;
   private turnText!: Phaser.GameObjects.Text;
@@ -39,16 +40,46 @@ export class BattleScene extends Phaser.Scene {
       opponentLyric: null,
     };
 
-    this.add.text(400, 30, 'BATTLE START', { ...FONT_STYLES.SUBTITLE, color: COLORS.RED }).setOrigin(0.5);
-    this.playerScoreText = this.add.text(30, 30, `YOU: 0`, { ...FONT_STYLES.BODY, color: COLORS.GREEN });
-    this.opponentScoreText = this.add.text(770, 30, `CPU: 0`, { ...FONT_STYLES.BODY, color: COLORS.RED }).setOrigin(1, 0);
-    this.turnText = this.add.text(400, 70, `Turn: 1/4`, FONT_STYLES.BODY).setOrigin(0.5);
-    this.feedbackText = this.add.text(400, 300, '', FONT_STYLES.BATTLE_FEEDBACK).setOrigin(0.5);
-    this.opponentActionText = this.add.text(400, 200, '', FONT_STYLES.BATTLE_OPPONENT_ACTION).setOrigin(0.5);
-    this.beatMarker = this.add.text(400, 120, '●', FONT_STYLES.SUBTITLE).setOrigin(0.5).setVisible(false);
+    this.createLayout();
+    this.setupBeatTimer();
+
+    this.scale.on('resize', this.onResize, this);
+  }
+
+  private createLayout(): void {
+    const { width, height } = this.scale;
+
+    // Destroy existing UI elements before redrawing
+    if (this.battleStartText) this.battleStartText.destroy();
+    if (this.playerScoreText) this.playerScoreText.destroy();
+    if (this.opponentScoreText) this.opponentScoreText.destroy();
+    if (this.turnText) this.turnText.destroy();
+    if (this.feedbackText) this.feedbackText.destroy();
+    if (this.opponentActionText) this.opponentActionText.destroy();
+    if (this.beatMarker) this.beatMarker.destroy();
+    this.lyricsButtons.forEach(b => b.destroy());
+    this.lyricsButtons = [];
+
+    // Top UI Elements
+    const topMargin = height * 0.05;
+    const scoreOffset = width * 0.05;
+
+    this.battleStartText = this.add.text(width * 0.5, topMargin, 'BATTLE START', { ...FONT_STYLES.SUBTITLE, color: COLORS.RED }).setOrigin(0.5);
+    this.playerScoreText = this.add.text(scoreOffset, topMargin, `YOU: ${this.gameState.playerScore}`, { ...FONT_STYLES.BODY, color: COLORS.GREEN }).setOrigin(0, 0.5);
+    this.opponentScoreText = this.add.text(width - scoreOffset, topMargin, `CPU: ${this.gameState.opponentScore}`, { ...FONT_STYLES.BODY, color: COLORS.RED }).setOrigin(1, 0.5);
+    this.turnText = this.add.text(width * 0.5, topMargin + 40, `Turn: ${this.gameState.currentTurn}/4`, FONT_STYLES.BODY).setOrigin(0.5);
+
+    // Mid-Screen Action/Feedback
+    this.opponentActionText = this.add.text(width * 0.5, height * 0.3, '', FONT_STYLES.BATTLE_OPPONENT_ACTION).setOrigin(0.5);
+    this.feedbackText = this.add.text(width * 0.5, height * 0.45, '', FONT_STYLES.BATTLE_FEEDBACK).setOrigin(0.5);
+    this.beatMarker = this.add.text(width * 0.5, height * 0.2, '●', FONT_STYLES.SUBTITLE).setOrigin(0.5).setVisible(false);
 
     this.createLyricsButtons();
-    this.setupBeatTimer();
+    this.updateScoreDisplay(); // Ensure score is up-to-date after redraw
+  }
+
+  private onResize(): void {
+    this.createLayout();
   }
 
   private setupBeatTimer(): void {
@@ -100,17 +131,30 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createLyricsButtons(): void {
+    const { width, height } = this.scale;
+    const buttonStyle = { ...FONT_STYLES.LYRIC_TEXT, font: '16px Arial', padding: { x: 10, y: 5 }, wordWrap: { width: width * 0.8 } };
+
+    const isPortrait = height > width;
+
     this.playerLyrics.forEach((lyric, index) => {
-      const yPos = 450 + Math.floor(index / 2) * 60;
-      const xPos = 250 + (index % 2) * 300;
-      const buttonStyle = { ...FONT_STYLES.LYRIC_TEXT, font: '16px Arial', padding: { x: 10, y: 5 } };
+      let xPos, yPos;
+      if (isPortrait) {
+        // Single column layout for portrait mode
+        xPos = width * 0.5;
+        yPos = height * 0.65 + index * 60;
+      } else {
+        // 2x2 grid for landscape mode
+        xPos = width * 0.3 + (index % 2) * (width * 0.4);
+        yPos = height * 0.7 + Math.floor(index / 2) * 70;
+      }
+
       const button = this.add.text(xPos, yPos, lyric.text.replace('\n', ' / '), buttonStyle)
         .setOrigin(0.5).setInteractive();
 
       button.on('pointerdown', () => this.handlePlayerInput(lyric));
       this.lyricsButtons.push(button);
     });
-    this.toggleLyricsButtons(false);
+    this.toggleLyricsButtons(this.gameState.gamePhase === 'selecting');
   }
 
   private handlePlayerInput(lyric: LyricsPattern): void {
@@ -185,5 +229,12 @@ export class BattleScene extends Phaser.Scene {
     this.lyricsButtons.forEach(button => {
         button.setInteractive(isEnabled).setAlpha(isEnabled ? 1 : 0.5);
     });
+  }
+
+  shutdown() {
+    this.scale.off('resize', this.onResize, this);
+    if (this.beatTimer) {
+      this.beatTimer.destroy();
+    }
   }
 }
