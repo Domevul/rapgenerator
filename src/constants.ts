@@ -1,4 +1,4 @@
-import { LyricsPattern } from './types';
+import type { LyricsPattern } from './types';
 
 export const LYRICS_PATTERNS: LyricsPattern[] = [
   // 攻撃タイプ
