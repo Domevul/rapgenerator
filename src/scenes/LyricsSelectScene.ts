@@ -51,7 +51,7 @@ export class LyricsSelectScene extends Phaser.Scene {
     this.lyricsContainer.setMask(mask);
 
     // Define scroll boundaries
-    const listHeight = this.lyricsContainer.getBounds().height;
+    const listHeight = this.lyricsContainer.getData('contentHeight') || 0;
 
     this.scrollMaxY = scrollAreaY;
     this.scrollMinY = scrollAreaY + scrollAreaHeight - listHeight;
@@ -95,9 +95,12 @@ export class LyricsSelectScene extends Phaser.Scene {
       this.lyricsContainer.add(lyricText);
       yPos += lyricText.height + 15;
     });
+
+    const contentHeight = yPos > 0 ? yPos - 15 : 0;
+    this.lyricsContainer.setData('contentHeight', contentHeight);
   }
 
-  private onWheel(pointer: Phaser.Input.Pointer, gameObjects: Phaser.GameObjects.GameObject[], deltaX: number, deltaY: number): void {
+  private onWheel(_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number): void {
     if (this.scrollMinY >= this.scrollMaxY) return; // No need to scroll
 
     const newY = this.lyricsContainer.y - deltaY * 0.5;
@@ -106,7 +109,7 @@ export class LyricsSelectScene extends Phaser.Scene {
     this.lyricsContainer.y = Phaser.Math.Clamp(newY, this.scrollMinY, this.scrollMaxY);
   }
 
-  private onResize(gameSize: Phaser.Structs.Size): void {
+  private onResize(_gameSize: Phaser.Structs.Size): void {
     this.createLayout();
   }
 
