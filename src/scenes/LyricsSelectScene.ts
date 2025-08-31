@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FONT_STYLES, LYRICS_PATTERNS, SCENE_KEYS } from '../constants';
+import { COLORS, FONT_STYLES, LYRICS_PATTERNS, SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import type { LyricsPattern } from '../types';
 
 export class LyricsSelectScene extends Phaser.Scene {
@@ -8,8 +8,6 @@ export class LyricsSelectScene extends Phaser.Scene {
   private lyricsContainer!: Phaser.GameObjects.Container;
   private scrollMinY: number = 0;
   private scrollMaxY: number = 0;
-  private titleText!: Phaser.GameObjects.Text;
-  private maskGraphics!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super({ key: SCENE_KEYS.LYRICS_SELECT });
@@ -19,33 +17,25 @@ export class LyricsSelectScene extends Phaser.Scene {
     this.selectedLyrics = [];
     this.createLayout();
     this.input.on('wheel', this.onWheel, this);
-    this.scale.on('resize', this.onResize, this);
   }
 
   private createLayout(): void {
-    const { width, height } = this.scale;
-
-    // Clear old objects if resizing
-    if (this.titleText) this.titleText.destroy();
-    if (this.startButton) this.startButton.destroy();
-    if (this.lyricsContainer) this.lyricsContainer.destroy();
-    if (this.maskGraphics) this.maskGraphics.destroy();
-
-    this.titleText = this.add.text(width * 0.5, 50, '歌詞を4つ選択してください', FONT_STYLES.SUBTITLE).setOrigin(0.5);
+    this.add.text(GAME_WIDTH * 0.5, 50, '歌詞を4つ選択してください', FONT_STYLES.SUBTITLE).setOrigin(0.5);
 
     const scrollAreaY = 120;
-    const scrollAreaHeight = height - 200;
+    const scrollAreaHeight = GAME_HEIGHT - 200;
 
-    this.lyricsContainer = this.add.container(width * 0.5, scrollAreaY);
+    this.lyricsContainer = this.add.container(GAME_WIDTH * 0.5, scrollAreaY);
 
-    this.renderLyrics(width);
+    this.renderLyrics();
 
     // Create a mask for the scrollable area
-    this.maskGraphics = this.make.graphics();
-    this.maskGraphics.fillStyle(0xffffff);
-    this.maskGraphics.fillRect(0, scrollAreaY, width, scrollAreaHeight);
-    const mask = this.maskGraphics.createGeometryMask();
+    const maskGraphics = this.make.graphics();
+    maskGraphics.fillStyle(0xffffff);
+    maskGraphics.fillRect((GAME_WIDTH - GAME_WIDTH * 0.8) / 2, scrollAreaY, GAME_WIDTH * 0.8, scrollAreaHeight);
+    const mask = maskGraphics.createGeometryMask();
     this.lyricsContainer.setMask(mask);
+
 
     // Define scroll boundaries
     const listHeight = this.lyricsContainer.getData('contentHeight') || 0;
@@ -60,14 +50,14 @@ export class LyricsSelectScene extends Phaser.Scene {
 
     this.lyricsContainer.y = this.scrollMaxY; // Reset position
 
-    this.startButton = this.add.text(width * 0.5, height - 60, 'バトル開始', FONT_STYLES.BUTTON).setOrigin(0.5);
+    this.startButton = this.add.text(GAME_WIDTH * 0.5, GAME_HEIGHT - 60, 'バトル開始', FONT_STYLES.BUTTON).setOrigin(0.5);
 
     this.updateStartButtonState();
   }
 
-  private renderLyrics(width: number): void {
+  private renderLyrics(): void {
     let yPos = 0;
-    const textWidth = width * 0.8;
+    const textWidth = GAME_WIDTH * 0.8;
 
     LYRICS_PATTERNS.forEach(lyric => {
       const lyricTextStyle = { ...FONT_STYLES.LYRIC_TEXT, wordWrap: { width: textWidth } };
@@ -96,10 +86,6 @@ export class LyricsSelectScene extends Phaser.Scene {
     this.lyricsContainer.y = Phaser.Math.Clamp(newY, this.scrollMinY, this.scrollMaxY);
   }
 
-  private onResize(_gameSize: Phaser.Structs.Size): void {
-    this.createLayout();
-  }
-
   private toggleLyricSelection(lyric: LyricsPattern, lyricText: Phaser.GameObjects.Text): void {
     const index = this.selectedLyrics.findIndex(l => l.id === lyric.id);
 
@@ -122,8 +108,6 @@ export class LyricsSelectScene extends Phaser.Scene {
       this.startButton.setBackgroundColor(COLORS.PRIMARY);
       this.startButton.off('pointerdown');
       this.startButton.on('pointerdown', () => {
-        this.scale.off('resize', this.onResize, this);
-        this.input.off('wheel', this.onWheel, this);
         this.scene.start(SCENE_KEYS.BATTLE, { selectedLyrics: this.selectedLyrics });
       });
     } else {
@@ -134,7 +118,6 @@ export class LyricsSelectScene extends Phaser.Scene {
   }
 
   shutdown() {
-    this.scale.off('resize', this.onResize, this);
     this.input.off('wheel', this.onWheel, this);
   }
 }
