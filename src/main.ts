@@ -6,9 +6,12 @@ import { ResultScene } from './scenes/ResultScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
-  parent: 'app',
+  scale: {
+    mode: Phaser.Scale.RESIZE,
+    parent: 'app',
+    width: '100%',
+    height: '100%',
+  },
   scene: [MainMenuScene, LyricsSelectScene, BattleScene, ResultScene],
 };
 
