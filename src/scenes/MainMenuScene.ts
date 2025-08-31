@@ -1,17 +1,17 @@
 import Phaser from 'phaser';
 
-export class TitleScene extends Phaser.Scene {
+export class MainMenuScene extends Phaser.Scene {
   constructor() {
-    super({ key: 'TitleScene' });
+    super({ key: 'MainMenuScene' });
   }
 
   create() {
-    this.add.text(400, 250, 'My Game', {
+    this.add.text(400, 250, 'ラップバトルゲーム', {
       font: '48px Arial',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    this.add.text(400, 350, 'Click to Start', {
+    this.add.text(400, 350, 'クリックして開始', {
       font: '32px Arial',
       color: '#ffffff'
     }).setOrigin(0.5);
