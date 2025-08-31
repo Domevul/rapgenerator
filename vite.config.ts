@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '',
+  base: '/rapgenerator/',
   build: {
     outDir: 'docs',
     emptyOutDir: true
