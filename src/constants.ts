@@ -122,14 +122,14 @@ export const COLORS = {
 } as const;
 
 export const FONT_STYLES = {
-  TITLE: { font: '48px Arial', color: COLORS.WHITE },
-  SUBTITLE: { font: '32px Arial', color: COLORS.WHITE },
-  BODY: { font: '24px Arial', color: COLORS.WHITE },
-  BUTTON: { font: '32px Arial', color: COLORS.GREY, backgroundColor: COLORS.SECONDARY, padding: { x: 10, y: 5 } },
-  LYRIC_TEXT: { font: '20px Arial', color: COLORS.WHITE, backgroundColor: COLORS.DARK_GREY, padding: { x: 10, y: 10 } },
-  BATTLE_FEEDBACK: { font: '32px Arial', color: COLORS.YELLOW, align: 'center' },
-  BATTLE_OPPONENT_ACTION: { font: '24px Arial', color: COLORS.TERTIARY, align: 'center' },
-  RESULT_WIN: { font: '64px Arial', color: COLORS.GREEN },
-  RESULT_LOSE: { font: '64px Arial', color: COLORS.RED },
-  RESULT_DRAW: { font: '64px Arial', color: COLORS.YELLOW },
+  TITLE: { font: '48px "Noto Sans JP", Arial, sans-serif', color: COLORS.WHITE },
+  SUBTITLE: { font: '32px "Noto Sans JP", Arial, sans-serif', color: COLORS.WHITE },
+  BODY: { font: '24px "Noto Sans JP", Arial, sans-serif', color: COLORS.WHITE },
+  BUTTON: { font: '32px "Noto Sans JP", Arial, sans-serif', color: COLORS.GREY, backgroundColor: COLORS.SECONDARY, padding: { x: 10, y: 5 } },
+  LYRIC_TEXT: { font: '20px "Noto Sans JP", Arial, sans-serif', color: COLORS.WHITE, backgroundColor: COLORS.DARK_GREY, padding: { x: 10, y: 10 } },
+  BATTLE_FEEDBACK: { font: '32px "Noto Sans JP", Arial, sans-serif', color: COLORS.YELLOW, align: 'center' },
+  BATTLE_OPPONENT_ACTION: { font: '24px "Noto Sans JP", Arial, sans-serif', color: COLORS.TERTIARY, align: 'center' },
+  RESULT_WIN: { font: '64px "Noto Sans JP", Arial, sans-serif', color: COLORS.GREEN },
+  RESULT_LOSE: { font: '64px "Noto Sans JP", Arial, sans-serif', color: COLORS.RED },
+  RESULT_DRAW: { font: '64px "Noto Sans JP", Arial, sans-serif', color: COLORS.YELLOW },
 } as const;

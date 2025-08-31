@@ -8,6 +8,7 @@ export class BattleScene extends Phaser.Scene {
   private nextBeatTime: number = 0;
   private playerLyrics: LyricsPattern[] = [];
   private opponentLyrics: LyricsPattern[] = []; // For MC Rookie
+  private backgroundMusic!: Phaser.Sound.BaseSound;
 
   // UI Elements
   private playerScoreText!: Phaser.GameObjects.Text;
@@ -46,6 +47,9 @@ export class BattleScene extends Phaser.Scene {
     this.feedbackText = this.add.text(400, 300, '', FONT_STYLES.BATTLE_FEEDBACK).setOrigin(0.5);
     this.opponentActionText = this.add.text(400, 200, '', FONT_STYLES.BATTLE_OPPONENT_ACTION).setOrigin(0.5);
     this.beatMarker = this.add.text(400, 120, '●', FONT_STYLES.SUBTITLE).setOrigin(0.5).setVisible(false);
+
+    this.backgroundMusic = this.sound.add('battle-music', { loop: true });
+    this.backgroundMusic.play();
 
     this.createLyricsButtons();
     this.setupBeatTimer();
@@ -169,6 +173,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(): void {
+    this.backgroundMusic.stop();
     this.beatTimer.destroy();
     this.gameState.gamePhase = 'result';
     this.feedbackText.setText(`FINISH!\nFinal Score: ${this.gameState.playerScore}`);
