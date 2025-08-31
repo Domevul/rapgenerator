@@ -4,7 +4,7 @@ export interface LyricsPattern {
   text: string;
   type: 'attack' | 'technical' | 'counter' | 'closing';
   rhymeScore: number;
-  // countersTo: string[]; // This might be used later for scoring logic
+  countersTo: Array<'attack' | 'technical' | 'counter' | 'closing'>;
 }
 
 // ゲーム状態
@@ -14,6 +14,7 @@ export interface GameState {
   opponentScore: number;
   beatCount: number;
   gamePhase: 'selecting' | 'performing' | 'waiting' | 'result';
+  opponentLyric: LyricsPattern | null;
 }
 
 // Scene間データ共有

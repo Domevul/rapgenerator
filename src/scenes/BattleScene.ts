@@ -1,22 +1,20 @@
 import Phaser from 'phaser';
 import { GameState, LyricsPattern, TimingResult } from '../types';
-import {
-  BATTLE_BPM,
-  BEAT_INTERVAL,
-  LYRICS_PATTERNS,
-  PERFECT_TIMING_WINDOW,
-  GOOD_TIMING_WINDOW,
-} from '../constants';
+import { BEAT_INTERVAL, PERFECT_TIMING_WINDOW, GOOD_TIMING_WINDOW, LYRICS_PATTERNS } from '../constants';
 
 export class BattleScene extends Phaser.Scene {
   private gameState!: GameState;
   private beatTimer!: Phaser.Time.TimerEvent;
   private nextBeatTime: number = 0;
+  private playerLyrics: LyricsPattern[] = [];
+  private opponentLyrics: LyricsPattern[] = []; // For MC Rookie
 
   // UI Elements
   private playerScoreText!: Phaser.GameObjects.Text;
+  private opponentScoreText!: Phaser.GameObjects.Text;
   private turnText!: Phaser.GameObjects.Text;
   private feedbackText!: Phaser.GameObjects.Text;
+  private opponentActionText!: Phaser.GameObjects.Text;
   private beatMarker!: Phaser.GameObjects.Text;
   private lyricsButtons: Phaser.GameObjects.Text[] = [];
 
@@ -24,27 +22,37 @@ export class BattleScene extends Phaser.Scene {
     super({ key: 'BattleScene' });
   }
 
+  init(data: { selectedLyrics: LyricsPattern[] }) {
+    // Receive selected lyrics from the previous scene, with a fallback for testing
+    this.playerLyrics = data.selectedLyrics || LYRICS_PATTERNS.slice(0, 4);
+    // For "MC Rookie", the opponent chooses from a basic pool of lyrics.
+    this.opponentLyrics = LYRICS_PATTERNS.filter(p => p.type === 'attack' || p.type === 'technical');
+  }
+
   create() {
     this.gameState = {
       currentTurn: 1,
       playerScore: 0,
-      opponentScore: 0, // Not used in prototype
+      opponentScore: 0,
       beatCount: 0,
-      gamePhase: 'selecting',
+      gamePhase: 'waiting', // Start with opponent's turn
+      opponentLyric: null,
     };
 
-    this.add.text(400, 50, 'BATTLE START', { font: '32px Arial', color: '#ff0000' }).setOrigin(0.5);
-    this.playerScoreText = this.add.text(50, 50, `Score: 0`, { font: '24px Arial', color: '#ffffff' });
-    this.turnText = this.add.text(750, 50, `Turn: 1/4`, { font: '24px Arial', color: '#ffffff' }).setOrigin(1, 0);
-    this.feedbackText = this.add.text(400, 300, '', { font: '48px Arial', color: '#ffff00' }).setOrigin(0.5);
-    this.beatMarker = this.add.text(400, 150, '●', { font: '32px Arial', color: '#ffffff' }).setOrigin(0.5).setVisible(false);
+    this.add.text(400, 30, 'BATTLE START', { font: '32px Arial', color: '#ff0000' }).setOrigin(0.5);
+    this.playerScoreText = this.add.text(30, 30, `YOU: 0`, { font: '24px Arial', color: '#00ff00' });
+    this.opponentScoreText = this.add.text(770, 30, `CPU: 0`, { font: '24px Arial', color: '#ff0000' }).setOrigin(1, 0);
+    this.turnText = this.add.text(400, 70, `Turn: 1/4`, { font: '24px Arial', color: '#ffffff' }).setOrigin(0.5);
+    this.feedbackText = this.add.text(400, 300, '', { font: '32px Arial', color: '#ffff00', align: 'center' }).setOrigin(0.5);
+    this.opponentActionText = this.add.text(400, 200, '', { font: '24px Arial', color: '#ff8888', align: 'center' }).setOrigin(0.5);
+    this.beatMarker = this.add.text(400, 120, '●', { font: '32px Arial', color: '#ffffff' }).setOrigin(0.5).setVisible(false);
 
     this.createLyricsButtons();
     this.setupBeatTimer();
   }
 
   private setupBeatTimer(): void {
-    this.nextBeatTime = this.time.now + BEAT_INTERVAL;
+    this.nextBeatTime = this.time.now;
     this.beatTimer = this.time.addEvent({
       delay: BEAT_INTERVAL,
       callback: this.onBeat,
@@ -55,101 +63,108 @@ export class BattleScene extends Phaser.Scene {
 
   private onBeat(): void {
     this.gameState.beatCount++;
-    this.nextBeatTime = this.time.now + BEAT_INTERVAL;
+    this.nextBeatTime += BEAT_INTERVAL;
 
-    // Simple visual feedback for the beat
     this.beatMarker.setVisible(true);
-    this.tweens.add({
-        targets: this.beatMarker,
-        alpha: 0,
-        duration: BEAT_INTERVAL / 2,
-        ease: 'Power1',
-        onComplete: () => {
-            this.beatMarker.setVisible(false);
-            this.beatMarker.setAlpha(1);
-        }
-    });
+    this.tweens.add({ targets: this.beatMarker, alpha: 0, duration: BEAT_INTERVAL / 2, onComplete: () => this.beatMarker.setAlpha(1).setVisible(false) });
 
-    // Enable input every 4 beats (one measure)
-    if (this.gameState.beatCount % 4 === 0) {
-      this.feedbackText.setText('SELECT!');
-      this.gameState.gamePhase = 'selecting';
-      this.toggleLyricsButtons(true);
+    // The game loop is based on an 8-beat cycle (2 measures)
+    if (this.gameState.beatCount % 8 === 1) { // On the 1st beat, the opponent performs
+        this.opponentTurn();
+    } else if (this.gameState.beatCount % 8 === 5) { // On the 5th beat, it's the player's turn to respond
+        this.playerTurn();
     }
+  }
+
+  private opponentTurn() {
+    this.gameState.gamePhase = 'waiting';
+    this.toggleLyricsButtons(false);
+
+    const opponentChoice = this.opponentLyrics[Phaser.Math.Between(0, this.opponentLyrics.length - 1)];
+    this.gameState.opponentLyric = opponentChoice;
+
+    // Simplified scoring for opponent
+    const opponentRhythmScore = Math.random() > 0.2 ? 50 : 30; // 80% chance of Perfect
+    const opponentTurnScore = opponentRhythmScore + opponentChoice.rhymeScore;
+    this.gameState.opponentScore += opponentTurnScore;
+    this.updateScoreDisplay();
+
+    this.opponentActionText.setText(`[CPU] ${opponentChoice.text.replace('\n', ' / ')}`);
+    this.feedbackText.setText('');
+  }
+
+  private playerTurn() {
+    this.feedbackText.setText('YOUR TURN: SELECT!');
+    this.gameState.gamePhase = 'selecting';
+    this.toggleLyricsButtons(true);
   }
 
   private createLyricsButtons(): void {
-    // For prototype, just use first 3 attack lyrics
-    const sampleLyrics = LYRICS_PATTERNS.slice(0, 3);
+    this.playerLyrics.forEach((lyric, index) => {
+      const yPos = 450 + Math.floor(index / 2) * 60;
+      const xPos = 250 + (index % 2) * 300;
+      const button = this.add.text(xPos, yPos, lyric.text.replace('\n', ' / '), {
+        font: '16px Arial', color: '#ffffff', backgroundColor: '#333333', padding: { x: 10, y: 5 },
+      }).setOrigin(0.5).setInteractive();
 
-    sampleLyrics.forEach((lyric, index) => {
-      const button = this.add.text(400, 400 + index * 50, lyric.text.replace('\n', ' / '), {
-        font: '20px Arial',
-        color: '#ffffff',
-        backgroundColor: '#333333',
-        padding: { x: 10, y: 5 },
-      })
-      .setOrigin(0.5)
-      .setInteractive();
-
-      button.on('pointerdown', () => {
-        this.handlePlayerInput(lyric);
-      });
-
+      button.on('pointerdown', () => this.handlePlayerInput(lyric));
       this.lyricsButtons.push(button);
     });
-
-    this.toggleLyricsButtons(false); // Initially disabled
+    this.toggleLyricsButtons(false);
   }
 
   private handlePlayerInput(lyric: LyricsPattern): void {
-    if (this.gameState.gamePhase !== 'selecting') {
-      return;
-    }
+    if (this.gameState.gamePhase !== 'selecting') return;
+
     this.gameState.gamePhase = 'performing';
     this.toggleLyricsButtons(false);
 
+    // Scoring is based on three components as per the spec:
+
+    // 1. Rhythm Score: Based on timing accuracy
     const timingError = Math.abs(this.time.now - this.nextBeatTime);
     let timingResult: TimingResult;
+    if (timingError <= PERFECT_TIMING_WINDOW) timingResult = { accuracy: 'perfect', score: 50 };
+    else if (timingError <= GOOD_TIMING_WINDOW) timingResult = { accuracy: 'good', score: 30 };
+    else timingResult = { accuracy: 'miss', score: 0 };
 
-    if (timingError <= PERFECT_TIMING_WINDOW) {
-      timingResult = { accuracy: 'perfect', score: 50 };
-    } else if (timingError <= GOOD_TIMING_WINDOW) {
-      timingResult = { accuracy: 'good', score: 30 };
-    } else {
-      timingResult = { accuracy: 'miss', score: 0 };
+    // 2. Lyrics Choice Score: Based on countering the opponent's lyric type
+    let choiceScore = 0;
+    if (this.gameState.opponentLyric && lyric.countersTo.includes(this.gameState.opponentLyric.type)) {
+        choiceScore = 50; // Max score for a successful counter
     }
 
-    // Add rhyme score
-    const totalScore = timingResult.score + lyric.rhymeScore;
+    // 3. Rhyme Score: An intrinsic score based on the lyric's quality
+    const rhymeScore = lyric.rhymeScore;
+
+    const totalScore = timingResult.score + choiceScore + rhymeScore;
     this.gameState.playerScore += totalScore;
 
     this.updateScoreDisplay();
-    this.showFeedback(timingResult, lyric);
+    this.showFeedback(timingResult, choiceScore, rhymeScore);
     this.advanceTurn();
   }
 
   private updateScoreDisplay(): void {
-    this.playerScoreText.setText(`Score: ${this.gameState.playerScore}`);
+    this.playerScoreText.setText(`YOU: ${this.gameState.playerScore}`);
+    this.opponentScoreText.setText(`CPU: ${this.gameState.opponentScore}`);
   }
 
-  private showFeedback(timing: TimingResult, lyric: LyricsPattern): void {
-    const feedback = `${timing.accuracy.toUpperCase()}!\n+${timing.score} (Rhythm)\n+${lyric.rhymeScore} (Rhyme)`;
+  private showFeedback(timing: TimingResult, choiceScore: number, rhymeScore: number): void {
+    const feedback = `Rhythm: ${timing.accuracy.toUpperCase()} +${timing.score}\nChoice: +${choiceScore}\nRhyme: +${rhymeScore}`;
     this.feedbackText.setText(feedback);
-
-    this.time.delayedCall(1000, () => {
-        if (this.gameState.gamePhase !== 'selecting') {
-            this.feedbackText.setText('');
-        }
-    });
+    this.opponentActionText.setText(''); // Clear opponent text
   }
 
   private advanceTurn(): void {
     if (this.gameState.currentTurn < 4) {
       this.gameState.currentTurn++;
-      this.turnText.setText(`Turn: ${this.gameState.currentTurn}/4`);
+      this.time.delayedCall(1500, () => {
+        this.turnText.setText(`Turn: ${this.gameState.currentTurn}/4`);
+        this.feedbackText.setText('');
+      });
     } else {
-      this.endBattle();
+        this.time.delayedCall(2000, () => this.endBattle());
     }
   }
 
@@ -157,23 +172,18 @@ export class BattleScene extends Phaser.Scene {
     this.beatTimer.destroy();
     this.gameState.gamePhase = 'result';
     this.feedbackText.setText(`FINISH!\nFinal Score: ${this.gameState.playerScore}`);
-    this.toggleLyricsButtons(false);
 
     this.time.delayedCall(3000, () => {
-        // For now, just restart the main menu
-        this.scene.start('MainMenuScene');
+      this.scene.start('ResultScene', {
+          playerScore: this.gameState.playerScore,
+          opponentScore: this.gameState.opponentScore
+      });
     });
   }
 
   private toggleLyricsButtons(isEnabled: boolean): void {
     this.lyricsButtons.forEach(button => {
-        if (isEnabled) {
-            button.setInteractive();
-            button.setAlpha(1);
-        } else {
-            button.disableInteractive();
-            button.setAlpha(0.5);
-        }
+        button.setInteractive(isEnabled).setAlpha(isEnabled ? 1 : 0.5);
     });
   }
 }
