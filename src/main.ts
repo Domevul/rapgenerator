@@ -3,6 +3,7 @@ import { BattleScene } from './scenes/BattleScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { LyricsSelectScene } from './scenes/LyricsSelectScene';
 import { ResultScene } from './scenes/ResultScene';
+import { PreloaderScene } from './scenes/PreloaderScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -12,7 +13,7 @@ const config: Phaser.Types.Core.GameConfig = {
     width: '100%',
     height: '100%',
   },
-  scene: [MainMenuScene, LyricsSelectScene, BattleScene, ResultScene],
+  scene: [PreloaderScene, MainMenuScene, LyricsSelectScene, BattleScene, ResultScene],
 };
 
 new Phaser.Game(config);
