@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { LYRICS_PATTERNS } from '../constants';
+import { COLORS, FONT_STYLES, LYRICS_PATTERNS, SCENE_KEYS } from '../constants';
 import type { LyricsPattern } from '../types';
 
 export class LyricsSelectScene extends Phaser.Scene {
@@ -12,7 +12,7 @@ export class LyricsSelectScene extends Phaser.Scene {
   private maskGraphics!: Phaser.GameObjects.Graphics;
 
   constructor() {
-    super({ key: 'LyricsSelectScene' });
+    super({ key: SCENE_KEYS.LYRICS_SELECT });
   }
 
   create() {
@@ -31,10 +31,7 @@ export class LyricsSelectScene extends Phaser.Scene {
     if (this.lyricsContainer) this.lyricsContainer.destroy();
     if (this.maskGraphics) this.maskGraphics.destroy();
 
-    this.titleText = this.add.text(width * 0.5, 50, '歌詞を4つ選択してください', {
-      font: '32px Arial',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    this.titleText = this.add.text(width * 0.5, 50, '歌詞を4つ選択してください', FONT_STYLES.SUBTITLE).setOrigin(0.5);
 
     const scrollAreaY = 120;
     const scrollAreaHeight = height - 200;
@@ -63,12 +60,7 @@ export class LyricsSelectScene extends Phaser.Scene {
 
     this.lyricsContainer.y = this.scrollMaxY; // Reset position
 
-    this.startButton = this.add.text(width * 0.5, height - 60, 'バトル開始', {
-      font: '32px Arial',
-      color: '#888888',
-      backgroundColor: '#555555',
-      padding: { x: 10, y: 5 }
-    }).setOrigin(0.5);
+    this.startButton = this.add.text(width * 0.5, height - 60, 'バトル開始', FONT_STYLES.BUTTON).setOrigin(0.5);
 
     this.updateStartButtonState();
   }
@@ -78,13 +70,8 @@ export class LyricsSelectScene extends Phaser.Scene {
     const textWidth = width * 0.8;
 
     LYRICS_PATTERNS.forEach(lyric => {
-      const lyricText = this.add.text(0, yPos, `[${lyric.type}] ${lyric.text.replace('\n', ' / ')}`, {
-        font: '20px Arial',
-        color: '#ffffff',
-        backgroundColor: '#333333',
-        padding: { x: 10, y: 10 },
-        wordWrap: { width: textWidth }
-      })
+      const lyricTextStyle = { ...FONT_STYLES.LYRIC_TEXT, wordWrap: { width: textWidth } };
+      const lyricText = this.add.text(0, yPos, `[${lyric.type}] ${lyric.text.replace('\n', ' / ')}`, lyricTextStyle)
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true });
 
@@ -118,11 +105,11 @@ export class LyricsSelectScene extends Phaser.Scene {
 
     if (index > -1) {
       this.selectedLyrics.splice(index, 1);
-      lyricText.setBackgroundColor('#333333');
+      lyricText.setBackgroundColor(COLORS.DARK_GREY);
     } else {
       if (this.selectedLyrics.length < 4) {
         this.selectedLyrics.push(lyric);
-        lyricText.setBackgroundColor('#00ff00');
+        lyricText.setBackgroundColor(COLORS.GREEN);
       }
     }
     this.updateStartButtonState();
@@ -131,18 +118,18 @@ export class LyricsSelectScene extends Phaser.Scene {
   private updateStartButtonState(): void {
     if (this.selectedLyrics.length === 4) {
       this.startButton.setInteractive({ useHandCursor: true });
-      this.startButton.setColor('#ffffff');
-      this.startButton.setBackgroundColor('#008800');
+      this.startButton.setColor(COLORS.WHITE);
+      this.startButton.setBackgroundColor(COLORS.PRIMARY);
       this.startButton.off('pointerdown');
       this.startButton.on('pointerdown', () => {
         this.scale.off('resize', this.onResize, this);
         this.input.off('wheel', this.onWheel, this);
-        this.scene.start('BattleScene', { selectedLyrics: this.selectedLyrics });
+        this.scene.start(SCENE_KEYS.BATTLE, { selectedLyrics: this.selectedLyrics });
       });
     } else {
       this.startButton.disableInteractive();
-      this.startButton.setColor('#888888');
-      this.startButton.setBackgroundColor('#555555');
+      this.startButton.setColor(COLORS.GREY);
+      this.startButton.setBackgroundColor(COLORS.SECONDARY);
     }
   }
 
