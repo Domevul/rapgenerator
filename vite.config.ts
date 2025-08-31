@@ -4,7 +4,14 @@ export default defineConfig({
   base: '/rapgenerator/',
   build: {
     outDir: 'docs',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          phaser: ['phaser']
+        }
+      }
+    }
   },
   define: {
     'typeof CANVAS_RENDERER': JSON.stringify(true),
