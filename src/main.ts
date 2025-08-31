@@ -1,24 +1,18 @@
-import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+import Phaser from 'phaser';
+import { BattleScene } from './scenes/BattleScene';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
+const config: Phaser.Types.Core.GameConfig = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  parent: 'app',
+  scene: [BattleScene],
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 200 }
+    }
+  }
+};
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+new Phaser.Game(config);
