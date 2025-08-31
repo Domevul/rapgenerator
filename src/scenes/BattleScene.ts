@@ -56,8 +56,8 @@ export class BattleScene extends Phaser.Scene {
 
   private createLayout(): void {
     // Top UI Elements
-    const topMargin = GAME_HEIGHT * 0.05;
-    const scoreOffset = GAME_WIDTH * 0.05;
+    const topMargin = this.scale.height * 0.05;
+    const scoreOffset = this.scale.width * 0.05;
 
     this.add.text(GAME_WIDTH * 0.5, topMargin, 'BATTLE START', { ...FONT_STYLES.SUBTITLE, color: COLORS.RED }).setOrigin(0.5);
     this.playerScoreText = this.add.text(scoreOffset, topMargin, `YOU: ${this.gameState.playerScore}`, { ...FONT_STYLES.BODY, color: COLORS.GREEN }).setOrigin(0, 0.5);

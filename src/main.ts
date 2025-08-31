@@ -10,10 +10,10 @@ const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   scale: {
     parent: 'app',
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: '100%',
+    height: '100%',
   },
   scene: [PreloaderScene, MainMenuScene, LyricsSelectScene, BattleScene, ResultScene],
 };
