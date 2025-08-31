@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { LYRICS_PATTERNS } from '../constants';
-import { LyricsPattern } from '../types';
+import type { LyricsPattern } from '../types';
 
 export class LyricsSelectScene extends Phaser.Scene {
   private selectedLyrics: LyricsPattern[] = [];

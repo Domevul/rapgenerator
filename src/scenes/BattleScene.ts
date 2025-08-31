@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GameState, LyricsPattern, TimingResult } from '../types';
+import type { GameState, LyricsPattern, TimingResult } from '../types';
 import { BEAT_INTERVAL, PERFECT_TIMING_WINDOW, GOOD_TIMING_WINDOW, LYRICS_PATTERNS } from '../constants';
 
 export class BattleScene extends Phaser.Scene {
