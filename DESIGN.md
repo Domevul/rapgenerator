@@ -83,3 +83,25 @@ UI要素の配置を絶対座標から相対座標に変更し、画面サイズ
 - **スクロールエリア:** タイトルとボタンの間の可変領域に配置します。
 
 これらの変更により、アプリケーションは多様なデバイスやウィンドウサイズに対応できるようになり、ユーザー体験が大幅に向上します。
+
+## 4. 実装上の注意点
+
+### 4.1. スクロールリストの高さ計算
+
+当初の実装案では、Phaserの `getBounds().height` を使用してスクロールコンテナ内のコンテンツの高さを取得することを想定していました。しかし、`wordWrap` を有効にした `Text` オブジェクトを多数含むコンテナでは、`getBounds()` が必ずしも即座に正確な高さを返さない可能性があることが判明しました。
+
+この問題に対処するため、`renderLyrics` 関数内で各 `Text` オブジェクトの `height` を手動で加算し、リスト全体の高さを算出するロジックに変更しています。
+
+```typescript
+// src/scenes/LyricsSelectScene.ts - renderLyrics内
+let yPos = 0;
+LYRICS_PATTERNS.forEach(lyric => {
+  // ... lyricTextの生成 ...
+  yPos += lyricText.height + 15; // 個々の高さを加算
+});
+// 最終的な高さをコンテナのデータとして保存
+const contentHeight = yPos > 0 ? yPos - 15 : 0;
+this.lyricsContainer.setData('contentHeight', contentHeight);
+```
+
+この計算された高さを `createLayout` 関数で使用することで、`getBounds()` の潜在的な不安定さを回避し、どのような環境でも正確なスクロール範囲を保証しています。
