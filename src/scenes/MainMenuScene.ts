@@ -17,7 +17,7 @@ export class MainMenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.input.on('pointerdown', () => {
-      this.scene.start('BattleScene');
+      this.scene.start('LyricsSelectScene');
     });
   }
 }
