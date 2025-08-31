@@ -98,3 +98,38 @@ export const BATTLE_BPM = 90;
 export const BEAT_INTERVAL = 60000 / BATTLE_BPM; // ms per beat
 export const PERFECT_TIMING_WINDOW = 50; // ms
 export const GOOD_TIMING_WINDOW = 100; // ms
+
+export const SCENE_KEYS = {
+  PRELOADER: 'PreloaderScene',
+  MAIN_MENU: 'MainMenuScene',
+  LYRICS_SELECT: 'LyricsSelectScene',
+  BATTLE: 'BattleScene',
+  RESULT: 'ResultScene',
+} as const;
+
+export const COLORS = {
+  WHITE: '#ffffff',
+  BLACK: '#000000',
+  GREY: '#888888',
+  LIGHT_GREY: '#dddddd',
+  DARK_GREY: '#333333',
+  GREEN: '#00ff00',
+  RED: '#ff0000',
+  YELLOW: '#ffff00',
+  PRIMARY: '#008800',
+  SECONDARY: '#555555',
+  TERTIARY: '#ff8888',
+} as const;
+
+export const FONT_STYLES = {
+  TITLE: { font: '48px Arial', color: COLORS.WHITE },
+  SUBTITLE: { font: '32px Arial', color: COLORS.WHITE },
+  BODY: { font: '24px Arial', color: COLORS.WHITE },
+  BUTTON: { font: '32px Arial', color: COLORS.GREY, backgroundColor: COLORS.SECONDARY, padding: { x: 10, y: 5 } },
+  LYRIC_TEXT: { font: '20px Arial', color: COLORS.WHITE, backgroundColor: COLORS.DARK_GREY, padding: { x: 10, y: 10 } },
+  BATTLE_FEEDBACK: { font: '32px Arial', color: COLORS.YELLOW, align: 'center' },
+  BATTLE_OPPONENT_ACTION: { font: '24px Arial', color: COLORS.TERTIARY, align: 'center' },
+  RESULT_WIN: { font: '64px Arial', color: COLORS.GREEN },
+  RESULT_LOSE: { font: '64px Arial', color: COLORS.RED },
+  RESULT_DRAW: { font: '64px Arial', color: COLORS.YELLOW },
+} as const;

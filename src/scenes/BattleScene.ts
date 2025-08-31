@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameState, LyricsPattern, TimingResult } from '../types';
-import { BEAT_INTERVAL, PERFECT_TIMING_WINDOW, GOOD_TIMING_WINDOW, LYRICS_PATTERNS } from '../constants';
+import { BEAT_INTERVAL, PERFECT_TIMING_WINDOW, GOOD_TIMING_WINDOW, LYRICS_PATTERNS, SCENE_KEYS, FONT_STYLES, COLORS } from '../constants';
 
 export class BattleScene extends Phaser.Scene {
   private gameState!: GameState;
@@ -19,7 +19,7 @@ export class BattleScene extends Phaser.Scene {
   private lyricsButtons: Phaser.GameObjects.Text[] = [];
 
   constructor() {
-    super({ key: 'BattleScene' });
+    super({ key: SCENE_KEYS.BATTLE });
   }
 
   init(data: { selectedLyrics: LyricsPattern[] }) {
@@ -39,13 +39,13 @@ export class BattleScene extends Phaser.Scene {
       opponentLyric: null,
     };
 
-    this.add.text(400, 30, 'BATTLE START', { font: '32px Arial', color: '#ff0000' }).setOrigin(0.5);
-    this.playerScoreText = this.add.text(30, 30, `YOU: 0`, { font: '24px Arial', color: '#00ff00' });
-    this.opponentScoreText = this.add.text(770, 30, `CPU: 0`, { font: '24px Arial', color: '#ff0000' }).setOrigin(1, 0);
-    this.turnText = this.add.text(400, 70, `Turn: 1/4`, { font: '24px Arial', color: '#ffffff' }).setOrigin(0.5);
-    this.feedbackText = this.add.text(400, 300, '', { font: '32px Arial', color: '#ffff00', align: 'center' }).setOrigin(0.5);
-    this.opponentActionText = this.add.text(400, 200, '', { font: '24px Arial', color: '#ff8888', align: 'center' }).setOrigin(0.5);
-    this.beatMarker = this.add.text(400, 120, '●', { font: '32px Arial', color: '#ffffff' }).setOrigin(0.5).setVisible(false);
+    this.add.text(400, 30, 'BATTLE START', { ...FONT_STYLES.SUBTITLE, color: COLORS.RED }).setOrigin(0.5);
+    this.playerScoreText = this.add.text(30, 30, `YOU: 0`, { ...FONT_STYLES.BODY, color: COLORS.GREEN });
+    this.opponentScoreText = this.add.text(770, 30, `CPU: 0`, { ...FONT_STYLES.BODY, color: COLORS.RED }).setOrigin(1, 0);
+    this.turnText = this.add.text(400, 70, `Turn: 1/4`, FONT_STYLES.BODY).setOrigin(0.5);
+    this.feedbackText = this.add.text(400, 300, '', FONT_STYLES.BATTLE_FEEDBACK).setOrigin(0.5);
+    this.opponentActionText = this.add.text(400, 200, '', FONT_STYLES.BATTLE_OPPONENT_ACTION).setOrigin(0.5);
+    this.beatMarker = this.add.text(400, 120, '●', FONT_STYLES.SUBTITLE).setOrigin(0.5).setVisible(false);
 
     this.createLyricsButtons();
     this.setupBeatTimer();
@@ -103,9 +103,9 @@ export class BattleScene extends Phaser.Scene {
     this.playerLyrics.forEach((lyric, index) => {
       const yPos = 450 + Math.floor(index / 2) * 60;
       const xPos = 250 + (index % 2) * 300;
-      const button = this.add.text(xPos, yPos, lyric.text.replace('\n', ' / '), {
-        font: '16px Arial', color: '#ffffff', backgroundColor: '#333333', padding: { x: 10, y: 5 },
-      }).setOrigin(0.5).setInteractive();
+      const buttonStyle = { ...FONT_STYLES.LYRIC_TEXT, font: '16px Arial', padding: { x: 10, y: 5 } };
+      const button = this.add.text(xPos, yPos, lyric.text.replace('\n', ' / '), buttonStyle)
+        .setOrigin(0.5).setInteractive();
 
       button.on('pointerdown', () => this.handlePlayerInput(lyric));
       this.lyricsButtons.push(button);
@@ -174,7 +174,7 @@ export class BattleScene extends Phaser.Scene {
     this.feedbackText.setText(`FINISH!\nFinal Score: ${this.gameState.playerScore}`);
 
     this.time.delayedCall(3000, () => {
-      this.scene.start('ResultScene', {
+      this.scene.start(SCENE_KEYS.RESULT, {
           playerScore: this.gameState.playerScore,
           opponentScore: this.gameState.opponentScore
       });
