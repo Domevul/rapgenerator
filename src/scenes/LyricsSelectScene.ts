@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FONT_STYLES, LYRICS_PATTERNS, SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT } from '../constants';
+import { COLORS, FONT_STYLES, LYRICS_PATTERNS, SCENE_KEYS } from '../constants';
 import type { LyricsPattern } from '../types';
 
 export class LyricsSelectScene extends Phaser.Scene {
@@ -8,6 +8,8 @@ export class LyricsSelectScene extends Phaser.Scene {
   private lyricsContainer!: Phaser.GameObjects.Container;
   private scrollMinY: number = 0;
   private scrollMaxY: number = 0;
+  private titleText!: Phaser.GameObjects.Text;
+  private maskGraphics!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super({ key: SCENE_KEYS.LYRICS_SELECT });
@@ -17,30 +19,43 @@ export class LyricsSelectScene extends Phaser.Scene {
     this.selectedLyrics = [];
     this.createLayout();
     this.input.on('wheel', this.onWheel, this);
+    this.scale.on('resize', this.onResize, this);
+  }
+
+  private onResize(): void {
+    this.createLayout();
   }
 
   private createLayout(): void {
-    this.add.text(GAME_WIDTH * 0.5, 50, '歌詞を4つ選択してください', FONT_STYLES.SUBTITLE).setOrigin(0.5);
+    // Destroy existing elements to prevent duplicates
+    if (this.titleText) this.titleText.destroy();
+    if (this.lyricsContainer) this.lyricsContainer.destroy();
+    if (this.startButton) this.startButton.destroy();
+    if (this.maskGraphics) this.maskGraphics.destroy();
+
+    const { width, height } = this.scale;
+
+    this.titleText = this.add.text(width * 0.5, 50, '歌詞を4つ選択してください', FONT_STYLES.SUBTITLE).setOrigin(0.5);
 
     const scrollAreaY = 120;
-    const scrollAreaHeight = GAME_HEIGHT - 200;
+    const scrollAreaHeight = height - 200;
 
-    this.lyricsContainer = this.add.container(GAME_WIDTH * 0.5, scrollAreaY);
+    this.lyricsContainer = this.add.container(width * 0.5, scrollAreaY);
 
-    this.renderLyrics();
+    this.renderLyrics(width);
 
     // Create a mask for the scrollable area
-    const maskGraphics = this.make.graphics();
-    maskGraphics.fillStyle(0xffffff);
-    maskGraphics.fillRect((GAME_WIDTH - GAME_WIDTH * 0.8) / 2, scrollAreaY, GAME_WIDTH * 0.8, scrollAreaHeight);
-    const mask = maskGraphics.createGeometryMask();
+    this.maskGraphics = this.make.graphics();
+    this.maskGraphics.fillStyle(0xffffff);
+    this.maskGraphics.fillRect((width - width * 0.8) / 2, scrollAreaY, width * 0.8, scrollAreaHeight);
+    const mask = this.maskGraphics.createGeometryMask();
     this.lyricsContainer.setMask(mask);
-
 
     // Define scroll boundaries
     const listHeight = this.lyricsContainer.getData('contentHeight') || 0;
 
     this.scrollMaxY = scrollAreaY;
+    // Calculate the minimum Y position for the container. It should not scroll up past its content.
     this.scrollMinY = scrollAreaY + scrollAreaHeight - listHeight;
 
     // If list is shorter than the area, don't allow scrolling
@@ -48,22 +63,29 @@ export class LyricsSelectScene extends Phaser.Scene {
         this.scrollMinY = scrollAreaY;
     }
 
-    this.lyricsContainer.y = this.scrollMaxY; // Reset position
+    // Clamp initial position
+    this.lyricsContainer.y = Phaser.Math.Clamp(this.lyricsContainer.y, this.scrollMinY, this.scrollMaxY);
 
-    this.startButton = this.add.text(GAME_WIDTH * 0.5, GAME_HEIGHT - 60, 'バトル開始', FONT_STYLES.BUTTON).setOrigin(0.5);
+    this.startButton = this.add.text(width * 0.5, height - 60, 'バトル開始', FONT_STYLES.BUTTON).setOrigin(0.5);
 
     this.updateStartButtonState();
   }
 
-  private renderLyrics(): void {
+  private renderLyrics(sceneWidth: number): void {
+    this.lyricsContainer.removeAll(true); // Clear previous lyrics
     let yPos = 0;
-    const textWidth = GAME_WIDTH * 0.8;
+    const textWidth = sceneWidth * 0.8;
 
     LYRICS_PATTERNS.forEach(lyric => {
       const lyricTextStyle = { ...FONT_STYLES.LYRIC_TEXT, wordWrap: { width: textWidth } };
       const lyricText = this.add.text(0, yPos, `[${lyric.type}] ${lyric.text.replace('\n', ' / ')}`, lyricTextStyle)
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true });
+
+      // Set background color based on selection status
+      if (this.selectedLyrics.some(l => l.id === lyric.id)) {
+        lyricText.setBackgroundColor(COLORS.GREEN);
+      }
 
       lyricText.on('pointerdown', () => {
         this.toggleLyricSelection(lyric, lyricText);
@@ -119,5 +141,6 @@ export class LyricsSelectScene extends Phaser.Scene {
 
   shutdown() {
     this.input.off('wheel', this.onWheel, this);
+    this.scale.off('resize', this.onResize, this);
   }
 }

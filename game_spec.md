@@ -121,7 +121,7 @@
 1. **BGM・効果音再生**: Phaser Audio Systemによる高精度音楽制御
 2. **ゲームループ**: Phaser Scene管理による安定した60FPS描画
 3. **リズム判定**: Timer Eventによるビート同期とタイミング精度測定
-4. **UI**: Phaser GameObjectsによるレスポンシブゲームUI
+4. **UI**: Phaserスケールマネージャーを活用したフルスクリーンレスポンシブUI
 
 ### Scene構成
 1. **MainMenuScene**: タイトル画面・設定
@@ -166,38 +166,69 @@ interface TimingResult {
 ```
 
 ### Phaser実装の特徴
+
 ```typescript
-// BattleScene実装例
-class BattleScene extends Phaser.Scene {
-  private beatTimer!: Phaser.Time.TimerEvent;
-  private gameState: GameState;
+// main.tsでのPhaser設定例
+const config: Phaser.Types.Core.GameConfig = {
+  type: Phaser.AUTO,
+  scale: {
+    parent: 'app',
+    mode: Phaser.Scale.RESIZE, // ウィンドウサイズに応じてリサイズ
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: '100%',
+    height: '100%',
+  },
+  scene: [PreloaderScene, MainMenuScene, LyricsSelectScene, BattleScene, ResultScene],
+};
+
+new Phaser.Game(config);
+```
+
+### レスポンシブUIとレイアウト
+
+本ゲームは、多様な画面サイズに対応するため、レスポンシブデザインを採用しています。
+
+#### 1. 相対的なUI要素の配置
+UI要素は、固定のピクセル座標ではなく、現在の画面サイズに対する相対的な位置に配置されます。これにより、ウィンドウサイズが変更されてもレイアウトが維持されます。
+
+- **実装**: 各シーンの `create` やレイアウト更新メソッド内で `this.scale.width` と `this.scale.height` を使用して座標を計算します。
+- **例**:
+  - 画面中央: `this.scale.width * 0.5`
+  - 画面下部: `this.scale.height - 50`
+
+#### 2. スクロール可能なリスト
+`LyricsSelectScene`のようにコンテンツが画面の高さを超える可能性がある場合、スクロール可能なコンテナを実装します。
+
+- `Phaser.GameObjects.Container` にコンテンツを格納します。
+- `Graphics` オブジェクトでマスクを作成し、表示領域を限定します。
+- マウスの `wheel` イベントをリッスンし、コンテナのY座標を動かしてスクロールを実現します。
+
+#### 3. 動的なレイアウト更新
+ウィンドウのリサイズに対応するため、`resize`イベントを監視し、レイアウトを再計算・再配置する処理を実装します。
+
+```typescript
+// LyricsSelectSceneでのレスポンシブ対応例
+export class LyricsSelectScene extends Phaser.Scene {
 
   create() {
-    // 音楽開始とビート同期
-    this.sound.play('battleBgm');
-    this.setupBeatTimer();
-
-    // UI要素配置
-    this.createLyricsButtons();
-    this.createScoreDisplay();
+    this.createLayout(); // 初期レイアウト作成
+    this.scale.on('resize', this.onResize, this); // リサイズイベントの監視
   }
 
-  private setupBeatTimer(): void {
-    const beatInterval = 60000 / 90; // BPM90
-    this.beatTimer = this.time.addEvent({
-      delay: beatInterval,
-      callback: this.onBeat,
-      loop: true
-    });
+  private onResize(gameSize: Phaser.Structs.Size): void {
+    // このメソッドでUI要素の再配置やマスクの再生成を行う
+    this.createLayout();
   }
 
-  private onBeat(): void {
-    this.gameState.beatCount++;
-    this.showBeatMarker();
+  private createLayout(): void {
+    // UI要素を this.scale.width と this.scale.height を基準に配置
+    const title = this.add.text(this.scale.width * 0.5, 50, '歌詞を4つ選択', ...);
+    const startButton = this.add.text(this.scale.width * 0.5, this.scale.height - 50, 'バトル開始', ...);
 
-    if (this.gameState.beatCount % 4 === 0) {
-      this.enablePlayerInput();
-    }
+    // スクロールエリアも画面サイズに基づいて設定
+    const scrollAreaY = 120;
+    const scrollAreaHeight = this.scale.height - 200;
+    // ...マスクやコンテナのセットアップ...
   }
 }
 ```

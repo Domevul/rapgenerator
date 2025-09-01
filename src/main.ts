@@ -4,7 +4,6 @@ import { MainMenuScene } from './scenes/MainMenuScene';
 import { LyricsSelectScene } from './scenes/LyricsSelectScene';
 import { ResultScene } from './scenes/ResultScene';
 import { PreloaderScene } from './scenes/PreloaderScene';
-import { GAME_HEIGHT, GAME_WIDTH } from './constants';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
