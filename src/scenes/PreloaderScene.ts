@@ -9,7 +9,7 @@ export class PreloaderScene extends Phaser.Scene {
   preload() {
     // In a real game, you would load assets here, e.g.:
     // this.load.image('player', 'assets/player.png');
-    this.load.audio('battle-music', 'assets/battle-music.mp3');
+    // this.load.audio('battle-music', 'assets/battle-music.mp3');
 
     this.load.on('complete', () => {
       this.scene.start(SCENE_KEYS.MAIN_MENU);
