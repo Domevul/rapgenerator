@@ -5,6 +5,7 @@ import { SimpleButton } from '../ui/SimpleButton';
 export class ResultScene extends Phaser.Scene {
   private playerScore: number = 0;
   private opponentScore: number = 0;
+  private uiElements: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super({ key: SCENE_KEYS.RESULT });
@@ -16,6 +17,20 @@ export class ResultScene extends Phaser.Scene {
   }
 
   create() {
+    this.createLayout();
+    this.scale.on('resize', this.onResize, this);
+  }
+
+  private onResize() {
+    this.createLayout();
+  }
+
+  private createLayout() {
+    this.uiElements.forEach(el => el.destroy());
+    this.uiElements = [];
+
+    const { width, height } = this.scale;
+
     let resultText: string;
     let resultStyle: Phaser.Types.GameObjects.Text.TextStyle;
 
@@ -30,14 +45,20 @@ export class ResultScene extends Phaser.Scene {
       resultStyle = FONT_STYLES.RESULT_DRAW;
     }
 
-    this.add.text(400, 200, resultText, resultStyle).setOrigin(0.5);
+    const resultTitle = this.add.text(width / 2, height * 0.3, resultText, resultStyle).setOrigin(0.5);
 
-    this.add.text(400, 300, `Your Score: ${this.playerScore}`, FONT_STYLES.SUBTITLE).setOrigin(0.5);
+    const playerScoreText = this.add.text(width / 2, height * 0.5, `Your Score: ${this.playerScore}`, FONT_STYLES.SUBTITLE).setOrigin(0.5);
 
-    this.add.text(400, 350, `Opponent's Score: ${this.opponentScore}`, FONT_STYLES.SUBTITLE).setOrigin(0.5);
+    const opponentScoreText = this.add.text(width / 2, height * 0.6, `Opponent's Score: ${this.opponentScore}`, FONT_STYLES.SUBTITLE).setOrigin(0.5);
 
-    new SimpleButton(this, 400, 450, 'Play Again', () => {
+    const playAgainButton = new SimpleButton(this, width / 2, height * 0.75, 'Play Again', () => {
       this.scene.start(SCENE_KEYS.MAIN_MENU);
     });
+
+    this.uiElements.push(resultTitle, playerScoreText, opponentScoreText, playAgainButton);
+  }
+
+  shutdown() {
+    this.scale.off('resize', this.onResize, this);
   }
 }
