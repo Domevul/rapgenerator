@@ -14,6 +14,7 @@ export class BattleScene extends Phaser.Scene {
   private gameState!: GameState;
   private beatTimer!: Phaser.Time.TimerEvent;
   private nextBeatTime: number = 0;
+  private playerTurnBeatTime: number = 0;
   private playerLyrics: LyricsPattern[] = [];
   private opponentLyrics: LyricsPattern[] = []; // For MC Rookie
 
@@ -114,7 +115,6 @@ export class BattleScene extends Phaser.Scene {
 
   private opponentTurn() {
     this.gameState.gamePhase = 'waiting';
-    this.toggleLyricsButtons(false);
 
     const opponentChoice = this.opponentLyrics[Phaser.Math.Between(0, this.opponentLyrics.length - 1)];
     this.gameState.opponentLyric = opponentChoice;
@@ -132,7 +132,7 @@ export class BattleScene extends Phaser.Scene {
   private playerTurn() {
     (this.data.get('feedbackText') as Phaser.GameObjects.Text).setText('YOUR TURN: SELECT!');
     this.gameState.gamePhase = 'selecting';
-    this.toggleLyricsButtons(true);
+    this.playerTurnBeatTime = this.nextBeatTime;
   }
 
   private createLyricsButtons(): void {
@@ -160,16 +160,14 @@ export class BattleScene extends Phaser.Scene {
       lyricsButtons.push(button);
     });
     this.data.set('lyricsButtons', lyricsButtons);
-    this.toggleLyricsButtons(this.gameState.gamePhase === 'selecting');
   }
 
   private handlePlayerInput(lyric: LyricsPattern): void {
     if (this.gameState.gamePhase !== 'selecting') return;
 
     this.gameState.gamePhase = 'performing';
-    this.toggleLyricsButtons(false);
 
-    const timingError = Math.abs(this.time.now - this.nextBeatTime);
+    const timingError = Math.abs(this.time.now - this.playerTurnBeatTime);
     let timingResult: TimingResult;
     if (timingError <= PERFECT_TIMING_WINDOW) timingResult = { accuracy: 'perfect', score: 50 };
     else if (timingError <= GOOD_TIMING_WINDOW) timingResult = { accuracy: 'good', score: 30 };
@@ -222,13 +220,6 @@ export class BattleScene extends Phaser.Scene {
           playerScore: this.gameState.playerScore,
           opponentScore: this.gameState.opponentScore
       });
-    });
-  }
-
-  private toggleLyricsButtons(isEnabled: boolean): void {
-    const lyricsButtons = this.data.get('lyricsButtons') || [];
-    lyricsButtons.forEach((button: Phaser.GameObjects.Text) => {
-        if(button && button.scene) button.setInteractive(isEnabled).setAlpha(isEnabled ? 1 : 0.5);
     });
   }
 
