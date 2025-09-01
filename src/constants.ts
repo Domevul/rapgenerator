@@ -94,9 +94,6 @@ export const LYRICS_PATTERNS: LyricsPattern[] = [
   },
 ];
 
-export const GAME_WIDTH = 1600;
-export const GAME_HEIGHT = 900;
-
 export const BATTLE_BPM = 90;
 export const BEAT_INTERVAL = 60000 / BATTLE_BPM; // ms per beat
 export const PERFECT_TIMING_WINDOW = 50; // ms
