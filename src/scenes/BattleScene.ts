@@ -274,11 +274,57 @@ export class BattleScene extends Phaser.Scene {
     choiceScore: number,
     rhymeScore: number,
   ): void {
-    const feedback = `Rhythm: ${timing.accuracy.toUpperCase()} +${
-      timing.score
-    }\nChoice: +${choiceScore}\nRhyme: +${rhymeScore}`;
-    this.feedbackText.setText({ text: feedback });
+    this.showTimingFeedback(timing);
+
+    if (timing.accuracy === 'perfect') {
+      this.flashScreen();
+    }
+
+    const scoreBreakdown = `Choice: +${choiceScore}\nRhyme: +${rhymeScore}`;
+    this.feedbackText.setText({ text: scoreBreakdown });
     this.opponentActionText.setText({ text: '' });
+  }
+
+  private showTimingFeedback(timing: TimingResult): void {
+    const { width, height } = this.scale;
+    let color = Colors.toHexString(COLORS.GRAY);
+    if (timing.accuracy === 'perfect') color = Colors.toHexString(COLORS.WARNING);
+    if (timing.accuracy === 'good') color = Colors.toHexString(COLORS.SUCCESS);
+
+    const feedbackText = this.add
+      .text(width / 2, height / 2, timing.accuracy.toUpperCase(), {
+        ...FONT_STYLES.TITLE,
+        color,
+        stroke: '#000000',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setAlpha(0)
+      .setScale(0.5);
+
+    this.tweens.add({
+      targets: feedbackText,
+      alpha: 1,
+      scale: 1.1,
+      duration: 200,
+      ease: 'Power2',
+      yoyo: true,
+      onComplete: () => {
+        this.tweens.add({
+          targets: feedbackText,
+          alpha: 0,
+          duration: 300,
+          delay: 200,
+          onComplete: () => {
+            feedbackText.destroy();
+          },
+        });
+      },
+    });
+  }
+
+  private flashScreen(): void {
+    this.cameras.main.flash(150, 255, 255, 180); // duration, r, g, b
   }
 
   private advanceTurn(): void {

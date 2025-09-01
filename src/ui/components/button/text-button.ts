@@ -7,23 +7,20 @@ export class TextButton extends LayoutContainer {
     private _text: Phaser.GameObjects.Text;
     private _textConfig: Phaser.Types.GameObjects.Text.TextConfig;
     private _enabled: boolean;
-    private _hovering: boolean;
-    private _clicking: boolean;
-    private _textConfigState: Phaser.Types.GameObjects.Text.TextConfig;
-    private _backgroundState: Phaser.Types.GameObjects.Graphics.Styles;
+    private _hovering: boolean = false;
+    private _clicking: boolean = false;
     private _onClickAction: () => void;
-    private _onHoverAction: () => void;
+    private hoverTween: Phaser.Tweens.Tween;
+    private pressTween: Phaser.Tweens.Tween;
 
     constructor(scene: Phaser.Scene, options: TextButtonOptions) {
         options = TextButtonOptions.setDefaultOptions(options);
         super(scene, options);
 
-        this._hovering = false;
         this._textConfig = options.textConfig;
 
         this.setText(options.textConfig)
             .setOnClick(options.onClick)
-            .setOnHover(options.onHover)
             .setEnabled(!options.disabled);
 
         this._setupHandlers();
@@ -55,19 +52,6 @@ export class TextButton extends LayoutContainer {
         return this._enabled;
     }
 
-    /**
-     * indicates if this button is being hovered (pointer over)
-     */
-    get hovering(): boolean {
-        return this._hovering;
-    }
-
-    /**
-     * indicates if this button is being clicked (pointer down)
-     */
-    get clicking(): boolean {
-        return this._clicking;
-    }
 
     /**
      * sets the `text` and `style` to be added
@@ -112,19 +96,6 @@ export class TextButton extends LayoutContainer {
     }
 
     /**
-     * sets the function to be run when a pointer over event is fired on this `TextButton`
-     * and also sets the behaviour when a pointer out event occurs to reset the `TextButton`
-     * back to its previous state
-     * @param func a function to be run when the `Phaser.Input.Events.GAMEOBJECT_POINTER_OVER`
-     * event is fired on this object
-     * @returns the current instance of this `TextButton`
-     */
-    setOnHover(func?: () => void): this {
-        this._onHoverAction = func;
-        return this;
-    }
-
-    /**
      * allows setting the `enabled` state of this `TextButton` so that hover and click events will
      * be handled if `true` and not if `false`
      * @param enabled a boolean indicating if `onClick` and `onHover` actions should be
@@ -136,107 +107,60 @@ export class TextButton extends LayoutContainer {
         return this;
     }
 
-    /**
-     * allows for manually simulating a UI Pointer Hover event
-     * @param hovering a boolean used to simulate actual UI hover event
-     * @returns the current instance of this `TextButton`
-     */
-    setHovering(hovering: boolean): this {
-        if (hovering) {
-            if (!this._hovering) {
-                this._onHoverHandler();
-            }
-        } else {
-            if (this._hovering) {
-                this._offHoverHandler();
-            }
-        }
-        return this;
-    }
-
-    /**
-     * allows for manually simulating a UI Pointer Touch / Click event
-     * @param clicking a boolean used to simulate actual UI click event
-     * @returns the current instance of this `TextButton`
-     */
-    setClicking(clicking: boolean): this {
-        if (clicking) {
-            if (!this._clicking) {
-                this._onClickHandler();
-            }
-        } else {
-            if (this._clicking) {
-                this._offClickHandler();
-            }
-        }
-        return this;
-    }
-
     private _setupHandlers(): void {
-        this.removeAllListeners(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER);
-        this.removeAllListeners(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN);
-        this.removeAllListeners(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT);
-        this.removeAllListeners(Phaser.Input.Events.GAMEOBJECT_POINTER_UP);
-
         this.setInteractive();
-        this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => this.setHovering(true));
-        this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, () => this.setClicking(true));
-        this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => this.setHovering(false));
-        this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, () => this.setClicking(false));
+        this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, this._onHoverHandler, this);
+        this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, this._onClickHandler, this);
+        this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, this._offHoverHandler, this);
+        this.on(Phaser.Input.Events.GAMEOBJECT_POINTER_UP, this._offClickHandler, this);
+    }
+
+    private _tweenTo(scale: number, duration: number = 100) {
+        if (this.hoverTween) {
+            this.hoverTween.stop();
+            this.hoverTween = null;
+        }
+        this.hoverTween = this.scene.tweens.add({
+            targets: this,
+            scale: scale,
+            duration: duration,
+            ease: 'Power2'
+        });
     }
 
     private _onClickHandler(): void {
         this._clicking = true;
-        if (this.enabled && this._onClickAction) {
-            this._saveState();
-            this.setHovering(true); // always enable hover when clicking
-            this._onClickAction();
+        if (this.enabled) {
+            this._tweenTo(0.95, 50);
+            if (this._onClickAction) {
+                this._onClickAction();
+            }
         }
     }
 
     private _offClickHandler(): void {
+        if (!this._clicking) return;
         this._clicking = false;
-        this._restoreState();
-        if (this._hovering) {
-            this._onHoverHandler();
+        if (this.enabled) {
+            if (this._hovering) {
+                this._tweenTo(1.05);
+            } else {
+                this._tweenTo(1.0);
+            }
         }
     }
 
     private _onHoverHandler(): void {
         this._hovering = true;
-        if (this.enabled && this._onHoverAction) {
-            this._saveState();
-            this._onHoverAction();
+        if (this.enabled && !this._clicking) {
+            this._tweenTo(1.05);
         }
     }
 
     private _offHoverHandler(): void {
         this._hovering = false;
-        this._restoreState();
-        this.setClicking(false); // always disable click when disable hover
-    }
-
-    /**
-     * only save state if not already saved to avoid overwriting between
-     * hover and click
-     */
-    private _saveState(): void {
-        if (!this._textConfigState) {
-            this._textConfigState = _.cloneDeep(this._textConfig);
-        }
-        if (!this._backgroundState) {
-            this._backgroundState = _.cloneDeep(this.backgroundStyles);
-        }
-    }
-
-    private _restoreState(): void {
-        if (this._textConfigState) {
-            this.setText(this._textConfigState);
-            this._textConfigState = null;
-        }
-        if (this._backgroundState) {
-            this.setBackground(this._backgroundState);
-            this._backgroundState = null;
+        if (this.enabled && !this._clicking) {
+            this._tweenTo(1.0);
         }
     }
 }
