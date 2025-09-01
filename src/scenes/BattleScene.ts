@@ -145,6 +145,7 @@ export class BattleScene extends Phaser.Scene {
   private createLyricsButtons(): void {
     const { width, height } = this.scale;
     const buttonStyle = { ...FONT_STYLES.LYRIC_TEXT, font: '16px Arial', padding: { x: 10, y: 5 }, wordWrap: { width: width * 0.8 } };
+    const lyricsButtons: Phaser.GameObjects.Text[] = [];
 
     const isPortrait = height > width;
 
@@ -163,9 +164,9 @@ export class BattleScene extends Phaser.Scene {
 
       button.on('pointerdown', () => this.handlePlayerInput(lyric));
       this.uiElements.push(button);
-      this.data.get('lyricsButtons').push(button);
+      lyricsButtons.push(button);
     });
-    this.data.set('lyricsButtons', []); // Initialize
+    this.data.set('lyricsButtons', lyricsButtons);
     this.toggleLyricsButtons(this.gameState.gamePhase === 'selecting');
   }
 
