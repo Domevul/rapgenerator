@@ -1,15 +1,23 @@
 import Phaser from 'phaser';
 import { COLORS, FONT_STYLES, LYRICS_PATTERNS, SCENE_KEYS } from '../constants';
 import type { LyricsPattern } from '../types';
+import {
+  LinearLayout,
+  Styles,
+  TextButton,
+  TextButtonOptions,
+} from '../ui/components';
 
 export class LyricsSelectScene extends Phaser.Scene {
   private selectedLyrics: LyricsPattern[] = [];
-  private startButton!: Phaser.GameObjects.Text;
-  private lyricsContainer!: Phaser.GameObjects.Container;
+  private startButton!: TextButton;
+  private lyricsContainer!: LinearLayout;
+  private scrollableContainer!: Phaser.GameObjects.Container;
   private scrollMinY: number = 0;
   private scrollMaxY: number = 0;
   private titleText!: Phaser.GameObjects.Text;
   private maskGraphics!: Phaser.GameObjects.Graphics;
+  private lyricButtons: TextButton[] = [];
 
   constructor() {
     super({ key: SCENE_KEYS.LYRICS_SELECT });
@@ -17,125 +25,165 @@ export class LyricsSelectScene extends Phaser.Scene {
 
   create() {
     this.selectedLyrics = [];
+    this.lyricButtons = [];
     this.createLayout();
     this.input.on('wheel', this.onWheel, this);
     this.scale.on('resize', this.onResize, this);
   }
 
-  private onResize(): void {
+  private onResize(gameSize: Phaser.Structs.Size): void {
     this.createLayout();
   }
 
   private createLayout(): void {
-    // Destroy existing elements to prevent duplicates
-    if (this.titleText) this.titleText.destroy();
-    if (this.lyricsContainer) this.lyricsContainer.destroy();
-    if (this.startButton) this.startButton.destroy();
-    if (this.maskGraphics) this.maskGraphics.destroy();
+    // Clean up previous layout
+    this.children.removeAll(true);
 
     const { width, height } = this.scale;
 
-    this.titleText = this.add.text(width * 0.5, 50, '歌詞を4つ選択してください', FONT_STYLES.SUBTITLE).setOrigin(0.5);
+    this.titleText = this.add
+      .text(width * 0.5, 50, '歌詞を4つ選択してください', FONT_STYLES.SUBTITLE)
+      .setOrigin(0.5);
 
     const scrollAreaY = 120;
-    const scrollAreaHeight = height - 200;
+    const scrollAreaHeight = height - 240;
+    const scrollAreaWidth = width * 0.8;
 
-    this.lyricsContainer = this.add.container(width * 0.5, scrollAreaY);
+    // A container that will be scrolled
+    this.scrollableContainer = this.add.container(width * 0.5, scrollAreaY);
 
-    this.renderLyrics(width);
+    this.renderLyrics(scrollAreaWidth);
+    this.scrollableContainer.add(this.lyricsContainer);
 
     // Create a mask for the scrollable area
     this.maskGraphics = this.make.graphics();
     this.maskGraphics.fillStyle(0xffffff);
-    this.maskGraphics.fillRect((width - width * 0.8) / 2, scrollAreaY, width * 0.8, scrollAreaHeight);
+    this.maskGraphics.fillRect(
+      (width - scrollAreaWidth) / 2,
+      scrollAreaY,
+      scrollAreaWidth,
+      scrollAreaHeight,
+    );
     const mask = this.maskGraphics.createGeometryMask();
-    this.lyricsContainer.setMask(mask);
+    this.scrollableContainer.setMask(mask);
 
     // Define scroll boundaries
-    const listHeight = this.lyricsContainer.getData('contentHeight') || 0;
+    const listHeight = this.lyricsContainer.height;
+    this.scrollMaxY = 0; // Relative to the scrollableContainer
+    this.scrollMinY = scrollAreaHeight - listHeight;
 
-    this.scrollMaxY = scrollAreaY;
-    // Calculate the minimum Y position for the container. It should not scroll up past its content.
-    this.scrollMinY = scrollAreaY + scrollAreaHeight - listHeight;
-
-    // If list is shorter than the area, don't allow scrolling
     if (listHeight < scrollAreaHeight) {
-        this.scrollMinY = scrollAreaY;
+      this.scrollMinY = 0;
     }
 
-    // Clamp initial position
-    this.lyricsContainer.y = Phaser.Math.Clamp(this.lyricsContainer.y, this.scrollMinY, this.scrollMaxY);
+    this.scrollableContainer.y = Phaser.Math.Clamp(
+      this.scrollableContainer.y,
+      this.scrollMinY + scrollAreaY, // convert to world coordinates for initial clamp
+      this.scrollMaxY + scrollAreaY,
+    );
 
-    this.startButton = this.add.text(width * 0.5, height - 60, 'バトル開始', FONT_STYLES.BUTTON).setOrigin(0.5);
+    const startButtonOptions = TextButtonOptions.primary({
+      textConfig: {
+        text: 'バトル開始',
+        style: FONT_STYLES.BUTTON,
+      },
+      padding: 10,
+      cornerRadius: 8,
+    });
+    this.startButton = new TextButton(this, startButtonOptions)
+      .setPosition(width * 0.5, height - 60)
+      .setEnabled(false);
+    this.add.existing(this.startButton);
 
     this.updateStartButtonState();
   }
 
-  private renderLyrics(sceneWidth: number): void {
-    this.lyricsContainer.removeAll(true); // Clear previous lyrics
-    let yPos = 0;
-    const textWidth = sceneWidth * 0.8;
-
-    LYRICS_PATTERNS.forEach(lyric => {
-      const lyricTextStyle = { ...FONT_STYLES.LYRIC_TEXT, wordWrap: { width: textWidth } };
-      const lyricText = this.add.text(0, yPos, `[${lyric.type}] ${lyric.text.replace('\n', ' / ')}`, lyricTextStyle)
-      .setOrigin(0.5, 0)
-      .setInteractive({ useHandCursor: true });
-
-      // Set background color based on selection status
-      if (this.selectedLyrics.some(l => l.id === lyric.id)) {
-        lyricText.setBackgroundColor(COLORS.GREEN);
-      }
-
-      lyricText.on('pointerdown', () => {
-        this.toggleLyricSelection(lyric, lyricText);
-      });
-
-      this.lyricsContainer.add(lyricText);
-      yPos += lyricText.height + 15;
+  private renderLyrics(width: number): void {
+    this.lyricButtons = [];
+    this.lyricsContainer = new LinearLayout(this, {
+      orientation: 'vertical',
+      padding: 10,
+      desiredWidth: width,
     });
 
-    const contentHeight = yPos > 0 ? yPos - 15 : 0;
-    this.lyricsContainer.setData('contentHeight', contentHeight);
+    LYRICS_PATTERNS.forEach((lyric) => {
+      const isSelected = this.selectedLyrics.some((l) => l.id === lyric.id);
+      const style = isSelected
+        ? Styles.success()
+        : Styles.secondary();
+
+      const buttonOptions: TextButtonOptions = {
+        textConfig: {
+          text: `[${lyric.type}] ${lyric.text.replace('\n', ' / ')}`,
+          style: {
+            font: FONT_STYLES.LYRIC_TEXT.font,
+            color: FONT_STYLES.LYRIC_TEXT.color,
+            wordWrap: { width: width - 20 },
+          },
+        },
+        backgroundStyles: style.graphics,
+        padding: 10,
+        cornerRadius: 5,
+        onClick: () => {
+          this.toggleLyricSelection(lyric, lyricButton);
+        },
+      };
+
+      const lyricButton = new TextButton(this, buttonOptions);
+      this.lyricButtons.push(lyricButton);
+      this.lyricsContainer.addContents(lyricButton);
+    });
   }
 
-  private onWheel(_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number): void {
+  private onWheel(
+    _pointer: Phaser.Input.Pointer,
+    _gameObjects: Phaser.GameObjects.GameObject[],
+    _deltaX: number,
+    deltaY: number,
+  ): void {
     if (this.scrollMinY >= this.scrollMaxY) return; // No need to scroll
 
+    // Note: We are moving the container that holds the LinearLayout
     const newY = this.lyricsContainer.y - deltaY * 0.5;
 
     // Clamp the position within the defined scroll boundaries
-    this.lyricsContainer.y = Phaser.Math.Clamp(newY, this.scrollMinY, this.scrollMaxY);
+    this.lyricsContainer.y = Phaser.Math.Clamp(
+      newY,
+      this.scrollMinY,
+      this.scrollMaxY,
+    );
   }
 
-  private toggleLyricSelection(lyric: LyricsPattern, lyricText: Phaser.GameObjects.Text): void {
-    const index = this.selectedLyrics.findIndex(l => l.id === lyric.id);
+  private toggleLyricSelection(
+    lyric: LyricsPattern,
+    lyricButton: TextButton,
+  ): void {
+    const index = this.selectedLyrics.findIndex((l) => l.id === lyric.id);
 
     if (index > -1) {
       this.selectedLyrics.splice(index, 1);
-      lyricText.setBackgroundColor(COLORS.DARK_GREY);
+      lyricButton.setBackground(Styles.secondary().graphics);
     } else {
       if (this.selectedLyrics.length < 4) {
         this.selectedLyrics.push(lyric);
-        lyricText.setBackgroundColor(COLORS.GREEN);
+        lyricButton.setBackground(Styles.success().graphics);
       }
     }
     this.updateStartButtonState();
   }
 
   private updateStartButtonState(): void {
-    if (this.selectedLyrics.length === 4) {
-      this.startButton.setInteractive({ useHandCursor: true });
-      this.startButton.setColor(COLORS.WHITE);
-      this.startButton.setBackgroundColor(COLORS.PRIMARY);
-      this.startButton.off('pointerdown');
-      this.startButton.on('pointerdown', () => {
-        this.scene.start(SCENE_KEYS.BATTLE, { selectedLyrics: this.selectedLyrics });
+    const enabled = this.selectedLyrics.length === 4;
+    this.startButton.setEnabled(enabled);
+
+    if (enabled) {
+      this.startButton.setOnClick(() => {
+        this.scene.start(SCENE_KEYS.BATTLE, {
+          selectedLyrics: this.selectedLyrics,
+        });
       });
     } else {
-      this.startButton.disableInteractive();
-      this.startButton.setColor(COLORS.GREY);
-      this.startButton.setBackgroundColor(COLORS.SECONDARY);
+      this.startButton.setOnClick(null); // Remove click handler
     }
   }
 
