@@ -9,6 +9,12 @@ import {
   FONT_STYLES,
   COLORS,
 } from '../constants';
+import {
+  GridLayout,
+  TextButton,
+  TextButtonOptions,
+  Colors,
+} from '../ui/components';
 
 export class BattleScene extends Phaser.Scene {
   private gameState!: GameState;
@@ -19,7 +25,13 @@ export class BattleScene extends Phaser.Scene {
   private opponentLyrics: LyricsPattern[] = []; // For MC Rookie
 
   // UI Elements
-  private uiElements: Phaser.GameObjects.GameObject[] = [];
+  private playerScoreText!: TextButton;
+  private opponentScoreText!: TextButton;
+  private turnText!: TextButton;
+  private opponentActionText!: TextButton;
+  private feedbackText!: TextButton;
+  private beatMarker!: TextButton;
+  private lyricsButtons: TextButton[] = [];
 
   constructor() {
     super({ key: SCENE_KEYS.BATTLE });
@@ -27,7 +39,9 @@ export class BattleScene extends Phaser.Scene {
 
   init(data: { selectedLyrics: LyricsPattern[] }) {
     this.playerLyrics = data.selectedLyrics || LYRICS_PATTERNS.slice(0, 4);
-    this.opponentLyrics = LYRICS_PATTERNS.filter(p => p.type === 'attack' || p.type === 'technical');
+    this.opponentLyrics = LYRICS_PATTERNS.filter(
+      (p) => p.type === 'attack' || p.type === 'technical',
+    );
   }
 
   create() {
@@ -51,37 +65,114 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createLayout(): void {
-    // Clear previous UI elements
-    this.uiElements.forEach(element => element.destroy());
-    this.uiElements = [];
-
+    this.children.removeAll(true);
     const { width, height } = this.scale;
 
-    // Top UI Elements
-    const topMargin = height * 0.05;
-    const scoreOffset = width * 0.05;
+    const mainLayout = new GridLayout(this, {
+      x: width / 2,
+      y: height / 2,
+      width,
+      height,
+      rows: 4,
+      columns: 3,
+      padding: 10,
+    });
+    this.add.existing(mainLayout);
 
-    this.uiElements.push(this.add.text(width * 0.5, topMargin, 'BATTLE START', { ...FONT_STYLES.SUBTITLE, color: COLORS.RED }).setOrigin(0.5));
-    const playerScoreText = this.add.text(scoreOffset, topMargin, `YOU: ${this.gameState.playerScore}`, { ...FONT_STYLES.BODY, color: COLORS.GREEN }).setOrigin(0, 0.5);
-    const opponentScoreText = this.add.text(width - scoreOffset, topMargin, `CPU: ${this.gameState.opponentScore}`, { ...FONT_STYLES.BODY, color: COLORS.RED }).setOrigin(1, 0.5);
-    const turnText = this.add.text(width * 0.5, topMargin + 40, `Turn: ${this.gameState.currentTurn}/4`, FONT_STYLES.BODY).setOrigin(0.5);
-    this.uiElements.push(playerScoreText, opponentScoreText, turnText);
+    // Top UI
+    this.playerScoreText = new TextButton(
+      this,
+      TextButtonOptions.dark({
+        textConfig: {
+          text: 'YOU: 0',
+          style: { ...FONT_STYLES.BODY, color: Colors.toHexString(Colors.success) },
+        },
+        disabled: true,
+      }),
+    );
+    this.opponentScoreText = new TextButton(
+      this,
+      TextButtonOptions.dark({
+        textConfig: {
+          text: 'CPU: 0',
+          style: { ...FONT_STYLES.BODY, color: Colors.toHexString(Colors.danger) },
+        },
+        disabled: true,
+      }),
+    );
+    this.turnText = new TextButton(
+      this,
+      TextButtonOptions.dark({
+        textConfig: { text: 'Turn: 1/4', style: FONT_STYLES.BODY },
+        disabled: true,
+      }),
+    );
 
-    // Mid-Screen Action/Feedback
-    const opponentActionText = this.add.text(width * 0.5, height * 0.3, '', FONT_STYLES.BATTLE_OPPONENT_ACTION).setOrigin(0.5);
-    const feedbackText = this.add.text(width * 0.5, height * 0.45, '', FONT_STYLES.BATTLE_FEEDBACK).setOrigin(0.5);
-    const beatMarker = this.add.text(width * 0.5, height * 0.2, '●', FONT_STYLES.SUBTITLE).setOrigin(0.5).setVisible(false);
-    this.uiElements.push(opponentActionText, feedbackText, beatMarker);
+    mainLayout.addContentAt(0, 0, this.playerScoreText);
+    mainLayout.addContentAt(0, 1, this.turnText);
+    mainLayout.addContentAt(0, 2, this.opponentScoreText);
 
-    // Assign to class properties where needed for updates
-    this.data.set('playerScoreText', playerScoreText);
-    this.data.set('opponentScoreText', opponentScoreText);
-    this.data.set('turnText', turnText);
-    this.data.set('opponentActionText', opponentActionText);
-    this.data.set('feedbackText', feedbackText);
-    this.data.set('beatMarker', beatMarker);
+    // Mid-Screen Action/Feedback - Placed manually since grid doesn't support span
+    this.opponentActionText = new TextButton(
+      this,
+      TextButtonOptions.light({
+        textConfig: { text: '', style: FONT_STYLES.BATTLE_OPPONENT_ACTION },
+        disabled: true,
+      }),
+    ).setPosition(width / 2, height * 0.3);
+    this.add.existing(this.opponentActionText);
 
-    this.createLyricsButtons();
+    this.feedbackText = new TextButton(
+      this,
+      TextButtonOptions.light({
+        textConfig: { text: '', style: FONT_STYLES.BATTLE_FEEDBACK },
+        disabled: true,
+      }),
+    ).setPosition(width / 2, height * 0.45);
+    this.add.existing(this.feedbackText);
+
+    this.beatMarker = new TextButton(
+      this,
+      TextButtonOptions.light({
+        textConfig: { text: '●', style: FONT_STYLES.SUBTITLE },
+        disabled: true,
+      }),
+    ).setPosition(width / 2, height * 0.2).setVisible(false);
+    this.add.existing(this.beatMarker);
+
+    // Player Lyric Buttons
+    const lyricsLayout = new GridLayout(this, {
+        width: width,
+        height: height * 0.4,
+        rows: 2,
+        columns: 2,
+        padding: 20,
+    });
+
+    this.lyricsButtons = this.playerLyrics.map((lyric) => {
+      const btn = new TextButton(
+        this,
+        TextButtonOptions.secondary({
+          textConfig: {
+            text: lyric.text.replace('\n', ' / '),
+            style: { ...FONT_STYLES.LYRIC_TEXT, wordWrap: { width: (width / 2) - 60 } },
+          },
+          padding: 10,
+          cornerRadius: 5,
+          onClick: () => this.handlePlayerInput(lyric),
+        }),
+      );
+      return btn;
+    });
+    lyricsLayout.addContentAt(0, 0, this.lyricsButtons[0]);
+    lyricsLayout.addContentAt(0, 1, this.lyricsButtons[1]);
+    lyricsLayout.addContentAt(1, 0, this.lyricsButtons[2]);
+    lyricsLayout.addContentAt(1, 1, this.lyricsButtons[3]);
+
+    // Add the lyrics layout to the main scene, positioned at the bottom
+    lyricsLayout.setPosition(width / 2, height * 0.75);
+    this.add.existing(lyricsLayout);
+
     this.updateScoreDisplay();
   }
 
@@ -100,23 +191,28 @@ export class BattleScene extends Phaser.Scene {
     this.gameState.beatCount++;
     this.nextBeatTime += BEAT_INTERVAL;
 
-    const beatMarker = this.data.get('beatMarker') as Phaser.GameObjects.Text;
-    if(beatMarker && beatMarker.scene) {
-        beatMarker.setVisible(true);
-        this.tweens.add({ targets: beatMarker, alpha: 0, duration: BEAT_INTERVAL / 2, onComplete: () => beatMarker.setAlpha(1).setVisible(false) });
+    if (this.beatMarker && this.beatMarker.scene) {
+      this.beatMarker.setVisible(true);
+      this.tweens.add({
+        targets: this.beatMarker,
+        alpha: 0,
+        duration: BEAT_INTERVAL / 2,
+        onComplete: () => this.beatMarker.setAlpha(1).setVisible(false),
+      });
     }
 
     if (this.gameState.beatCount % 8 === 1) {
-        this.opponentTurn();
+      this.opponentTurn();
     } else if (this.gameState.beatCount % 8 === 5) {
-        this.playerTurn();
+      this.playerTurn();
     }
   }
 
   private opponentTurn() {
     this.gameState.gamePhase = 'waiting';
 
-    const opponentChoice = this.opponentLyrics[Phaser.Math.Between(0, this.opponentLyrics.length - 1)];
+    const opponentChoice =
+      this.opponentLyrics[Phaser.Math.Between(0, this.opponentLyrics.length - 1)];
     this.gameState.opponentLyric = opponentChoice;
 
     const opponentRhythmScore = Math.random() > 0.2 ? 50 : 30;
@@ -124,42 +220,16 @@ export class BattleScene extends Phaser.Scene {
     this.gameState.opponentScore += opponentTurnScore;
     this.updateScoreDisplay();
 
-    const opponentActionText = this.data.get('opponentActionText') as Phaser.GameObjects.Text;
-    opponentActionText.setText(`[CPU] ${opponentChoice.text.replace('\n', ' / ')}`);
-    (this.data.get('feedbackText') as Phaser.GameObjects.Text).setText('');
+    this.opponentActionText.setText({
+      text: `[CPU] ${opponentChoice.text.replace('\n', ' / ')}`,
+    });
+    this.feedbackText.setText({ text: '' });
   }
 
   private playerTurn() {
-    (this.data.get('feedbackText') as Phaser.GameObjects.Text).setText('YOUR TURN: SELECT!');
+    this.feedbackText.setText({ text: 'YOUR TURN: SELECT!' });
     this.gameState.gamePhase = 'selecting';
     this.playerTurnBeatTime = this.nextBeatTime;
-  }
-
-  private createLyricsButtons(): void {
-    const { width, height } = this.scale;
-    const buttonStyle = { ...FONT_STYLES.LYRIC_TEXT, font: '16px Arial', padding: { x: 10, y: 5 }, wordWrap: { width: width * 0.8 } };
-    const lyricsButtons: Phaser.GameObjects.Text[] = [];
-
-    const isPortrait = height > width;
-
-    this.playerLyrics.forEach((lyric, index) => {
-      let xPos, yPos;
-      if (isPortrait) {
-        xPos = width * 0.5;
-        yPos = height * 0.65 + index * 60;
-      } else {
-        xPos = width * 0.3 + (index % 2) * (width * 0.4);
-        yPos = height * 0.7 + Math.floor(index / 2) * 70;
-      }
-
-      const button = this.add.text(xPos, yPos, lyric.text.replace('\n', ' / '), buttonStyle)
-        .setOrigin(0.5).setInteractive();
-
-      button.on('pointerdown', () => this.handlePlayerInput(lyric));
-      this.uiElements.push(button);
-      lyricsButtons.push(button);
-    });
-    this.data.set('lyricsButtons', lyricsButtons);
   }
 
   private handlePlayerInput(lyric: LyricsPattern): void {
@@ -169,13 +239,18 @@ export class BattleScene extends Phaser.Scene {
 
     const timingError = Math.abs(this.time.now - this.playerTurnBeatTime);
     let timingResult: TimingResult;
-    if (timingError <= PERFECT_TIMING_WINDOW) timingResult = { accuracy: 'perfect', score: 50 };
-    else if (timingError <= GOOD_TIMING_WINDOW) timingResult = { accuracy: 'good', score: 30 };
+    if (timingError <= PERFECT_TIMING_WINDOW)
+      timingResult = { accuracy: 'perfect', score: 50 };
+    else if (timingError <= GOOD_TIMING_WINDOW)
+      timingResult = { accuracy: 'good', score: 30 };
     else timingResult = { accuracy: 'miss', score: 0 };
 
     let choiceScore = 0;
-    if (this.gameState.opponentLyric && lyric.countersTo.includes(this.gameState.opponentLyric.type)) {
-        choiceScore = 50;
+    if (
+      this.gameState.opponentLyric &&
+      lyric.countersTo.includes(this.gameState.opponentLyric.type)
+    ) {
+      choiceScore = 50;
     }
 
     const rhymeScore = lyric.rhymeScore;
@@ -188,37 +263,49 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private updateScoreDisplay(): void {
-    (this.data.get('playerScoreText') as Phaser.GameObjects.Text).setText(`YOU: ${this.gameState.playerScore}`);
-    (this.data.get('opponentScoreText') as Phaser.GameObjects.Text).setText(`CPU: ${this.gameState.opponentScore}`);
+    this.playerScoreText.setText({ text: `YOU: ${this.gameState.playerScore}` });
+    this.opponentScoreText.setText({
+      text: `CPU: ${this.gameState.opponentScore}`,
+    });
   }
 
-  private showFeedback(timing: TimingResult, choiceScore: number, rhymeScore: number): void {
-    const feedback = `Rhythm: ${timing.accuracy.toUpperCase()} +${timing.score}\nChoice: +${choiceScore}\nRhyme: +${rhymeScore}`;
-    (this.data.get('feedbackText') as Phaser.GameObjects.Text).setText(feedback);
-    (this.data.get('opponentActionText') as Phaser.GameObjects.Text).setText('');
+  private showFeedback(
+    timing: TimingResult,
+    choiceScore: number,
+    rhymeScore: number,
+  ): void {
+    const feedback = `Rhythm: ${timing.accuracy.toUpperCase()} +${
+      timing.score
+    }\nChoice: +${choiceScore}\nRhyme: +${rhymeScore}`;
+    this.feedbackText.setText({ text: feedback });
+    this.opponentActionText.setText({ text: '' });
   }
 
   private advanceTurn(): void {
     if (this.gameState.currentTurn < 4) {
       this.gameState.currentTurn++;
       this.time.delayedCall(1500, () => {
-        (this.data.get('turnText') as Phaser.GameObjects.Text).setText(`Turn: ${this.gameState.currentTurn}/4`);
-        (this.data.get('feedbackText') as Phaser.GameObjects.Text).setText('');
+        this.turnText.setText({
+          text: `Turn: ${this.gameState.currentTurn}/4`,
+        });
+        this.feedbackText.setText({ text: '' });
       });
     } else {
-        this.time.delayedCall(2000, () => this.endBattle());
+      this.time.delayedCall(2000, () => this.endBattle());
     }
   }
 
   private endBattle(): void {
     this.beatTimer.destroy();
     this.gameState.gamePhase = 'result';
-    (this.data.get('feedbackText') as Phaser.GameObjects.Text).setText(`FINISH!\nFinal Score: ${this.gameState.playerScore}`);
+    this.feedbackText.setText({
+      text: `FINISH!\nFinal Score: ${this.gameState.playerScore}`,
+    });
 
     this.time.delayedCall(3000, () => {
       this.scene.start(SCENE_KEYS.RESULT, {
-          playerScore: this.gameState.playerScore,
-          opponentScore: this.gameState.opponentScore
+        playerScore: this.gameState.playerScore,
+        opponentScore: this.gameState.opponentScore,
       });
     });
   }
