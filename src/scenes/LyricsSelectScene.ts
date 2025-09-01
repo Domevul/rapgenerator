@@ -18,6 +18,12 @@ export class LyricsSelectScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
   private maskGraphics!: Phaser.GameObjects.Graphics;
   private lyricButtons: TextButton[] = [];
+  private scrollbar!: Phaser.GameObjects.Graphics;
+  private scrollbarThumb!: Phaser.GameObjects.Graphics;
+  private isDragging = false;
+  private dragStartY = 0;
+  private contentDragStartY = 0;
+  private contentStartRawY = 0;
 
   constructor() {
     super({ key: SCENE_KEYS.LYRICS_SELECT });
@@ -29,6 +35,10 @@ export class LyricsSelectScene extends Phaser.Scene {
     this.createLayout();
     this.input.on('wheel', this.onWheel, this);
     this.scale.on('resize', this.onResize, this);
+
+    this.input.on('pointerdown', this.onPointerDown, this);
+    this.input.on('pointermove', this.onPointerMove, this);
+    this.input.on('pointerup', this.onPointerUp, this);
   }
 
   private onResize(gameSize: Phaser.Structs.Size): void {
@@ -38,6 +48,8 @@ export class LyricsSelectScene extends Phaser.Scene {
   private createLayout(): void {
     // Clean up previous layout
     this.children.removeAll(true);
+    if (this.scrollbar) this.scrollbar.destroy();
+    if (this.scrollbarThumb) this.scrollbarThumb.destroy();
 
     const { width, height } = this.scale;
 
@@ -48,9 +60,19 @@ export class LyricsSelectScene extends Phaser.Scene {
     const scrollAreaY = 120;
     const scrollAreaHeight = height - 240;
     const scrollAreaWidth = width * 0.8;
+    const scrollAreaX = (width - scrollAreaWidth) / 2;
 
     // A container that will be scrolled
     this.scrollableContainer = this.add.container(width * 0.5, scrollAreaY);
+    this.scrollableContainer.setInteractive(
+      new Phaser.Geom.Rectangle(
+        -scrollAreaWidth / 2,
+        0,
+        scrollAreaWidth,
+        scrollAreaHeight,
+      ),
+      Phaser.Geom.Rectangle.Contains,
+    );
 
     this.renderLyrics(scrollAreaWidth);
     this.scrollableContainer.add(this.lyricsContainer);
@@ -58,29 +80,24 @@ export class LyricsSelectScene extends Phaser.Scene {
     // Create a mask for the scrollable area
     this.maskGraphics = this.make.graphics();
     this.maskGraphics.fillStyle(0xffffff);
-    this.maskGraphics.fillRect(
-      (width - scrollAreaWidth) / 2,
-      scrollAreaY,
-      scrollAreaWidth,
-      scrollAreaHeight,
-    );
+    this.maskGraphics.fillRect(scrollAreaX, scrollAreaY, scrollAreaWidth, scrollAreaHeight);
     const mask = this.maskGraphics.createGeometryMask();
     this.scrollableContainer.setMask(mask);
 
     // Define scroll boundaries
     const listHeight = this.lyricsContainer.height;
-    this.scrollMaxY = 0; // Relative to the scrollableContainer
-    this.scrollMinY = scrollAreaHeight - listHeight;
+    this.scrollMaxY = 0;
+    this.scrollMinY = Math.min(0, scrollAreaHeight - listHeight);
 
-    if (listHeight < scrollAreaHeight) {
-      this.scrollMinY = 0;
-    }
-
-    this.scrollableContainer.y = Phaser.Math.Clamp(
-      this.scrollableContainer.y,
-      this.scrollMinY + scrollAreaY, // convert to world coordinates for initial clamp
-      this.scrollMaxY + scrollAreaY,
+    // Create scrollbar
+    this.createScrollbar(
+      scrollAreaX + scrollAreaWidth + 5,
+      scrollAreaY,
+      scrollAreaHeight,
+      listHeight,
     );
+
+    this.updateScrollbarThumb();
 
     const startButtonOptions = TextButtonOptions.primary({
       textConfig: {
@@ -135,23 +152,113 @@ export class LyricsSelectScene extends Phaser.Scene {
     });
   }
 
+  private createScrollbar(
+    x: number,
+    y: number,
+    height: number,
+    contentHeight: number,
+  ): void {
+    if (contentHeight <= height) return;
+
+    this.scrollbar = this.add
+      .graphics()
+      .fillStyle(COLORS.GRAY_DARK, 0.5)
+      .fillRect(x, y, 8, height);
+
+    this.scrollbarThumb = this.add
+      .graphics()
+      .fillStyle(COLORS.GRAY, 1)
+      .fillRect(x, y, 8, 50); // Initial thumb
+
+    this.scrollbarThumb.setInteractive(
+      new Phaser.Geom.Rectangle(x, y, 8, height),
+      Phaser.Geom.Rectangle.Contains,
+    );
+  }
+
+  private updateScrollbarThumb(): void {
+    if (!this.scrollbar) return;
+
+    const scrollAreaHeight = this.scrollableContainer.input?.hitArea.height ?? 0;
+    const contentHeight = this.lyricsContainer.height;
+    const scrollableRatio = scrollAreaHeight / contentHeight;
+
+    if (scrollableRatio >= 1) {
+      this.scrollbar.setVisible(false);
+      this.scrollbarThumb.setVisible(false);
+      return;
+    }
+
+    this.scrollbar.setVisible(true);
+    this.scrollbarThumb.setVisible(true);
+
+    const thumbHeight = scrollAreaHeight * scrollableRatio;
+    this.scrollbarThumb.clear();
+    this.scrollbarThumb.fillStyle(COLORS.GRAY, 1);
+    this.scrollbarThumb.fillRect(this.scrollbar.x, this.scrollbar.y, 8, thumbHeight);
+
+    const scrollPercentage =
+      this.lyricsContainer.y / (this.scrollMinY - this.scrollMaxY);
+    const thumbY =
+      this.scrollbar.y + (scrollAreaHeight - thumbHeight) * scrollPercentage;
+    this.scrollbarThumb.y = thumbY;
+  }
+
+  private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.scrollbarThumb && this.scrollbarThumb.getBounds().contains(pointer.x, pointer.y)) {
+      this.isDragging = true;
+      this.dragStartY = pointer.y - this.scrollbarThumb.y;
+    } else if (this.scrollableContainer.getBounds().contains(pointer.x, pointer.y)) {
+      this.isDragging = true;
+      this.contentDragStartY = pointer.y;
+      this.contentStartRawY = this.lyricsContainer.y;
+    }
+  }
+
+  private onPointerMove(pointer: Phaser.Input.Pointer): void {
+    if (!this.isDragging) return;
+
+    // Check if the drag started on the scrollbar thumb
+    if (this.dragStartY > 0) {
+      const scrollAreaHeight = this.scrollableContainer.input?.hitArea.height ?? 0;
+      const thumbHeight = this.scrollbarThumb.displayHeight;
+      const scrollbarY = this.scrollbar.y;
+      const newThumbY = Phaser.Math.Clamp(pointer.y - this.dragStartY, scrollbarY, scrollbarY + scrollAreaHeight - thumbHeight);
+      let scrollPercentage = (newThumbY - scrollbarY) / (scrollAreaHeight - thumbHeight);
+      if (isNaN(scrollPercentage)) {
+        scrollPercentage = 0;
+      }
+      this.lyricsContainer.y = Phaser.Math.Clamp(this.scrollMinY * scrollPercentage, this.scrollMinY, this.scrollMaxY);
+    } else {
+      const dy = pointer.y - this.contentDragStartY;
+      const newY = this.contentStartRawY + dy;
+      this.lyricsContainer.y = Phaser.Math.Clamp(newY, this.scrollMinY, this.scrollMaxY);
+    }
+
+    this.updateScrollbarThumb();
+  }
+
+  private onPointerUp(): void {
+    this.isDragging = false;
+    this.dragStartY = 0;
+  }
+
   private onWheel(
     _pointer: Phaser.Input.Pointer,
     _gameObjects: Phaser.GameObjects.GameObject[],
     _deltaX: number,
     deltaY: number,
   ): void {
-    if (this.scrollMinY >= this.scrollMaxY) return; // No need to scroll
+    if (this.scrollMinY >= this.scrollMaxY) return;
 
-    // Note: We are moving the container that holds the LinearLayout
     const newY = this.lyricsContainer.y - deltaY * 0.5;
-
-    // Clamp the position within the defined scroll boundaries
     this.lyricsContainer.y = Phaser.Math.Clamp(
       newY,
       this.scrollMinY,
       this.scrollMaxY,
     );
+
+    this.updateScrollbarThumb();
   }
 
   private toggleLyricSelection(
@@ -190,5 +297,8 @@ export class LyricsSelectScene extends Phaser.Scene {
   shutdown() {
     this.input.off('wheel', this.onWheel, this);
     this.scale.off('resize', this.onResize, this);
+    this.input.off('pointerdown', this.onPointerDown, this);
+    this.input.off('pointermove', this.onPointerMove, this);
+    this.input.off('pointerup', this.onPointerUp, this);
   }
 }
