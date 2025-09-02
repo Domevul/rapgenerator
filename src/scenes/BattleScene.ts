@@ -15,6 +15,7 @@ import {
   TextButton,
   TextButtonOptions,
   Colors,
+  LyricsPhrase,
 } from '../ui/components';
 
 export class BattleScene extends Phaser.Scene {
@@ -24,6 +25,7 @@ export class BattleScene extends Phaser.Scene {
   private playerTurnBeatTime: number = 0;
   private playerLyrics: LyricsPattern[] = [];
   private opponentLyrics: LyricsPattern[] = []; // For MC Rookie
+  private activeLyric: LyricsPattern | null = null;
 
   // UI Elements
   private playerScoreText!: TextButton;
@@ -32,7 +34,7 @@ export class BattleScene extends Phaser.Scene {
   private opponentActionText!: TextButton;
   private feedbackText!: TextButton;
   private beatMarker!: TextButton;
-  private lyricsButtons: TextButton[] = [];
+  private lyricsPhrases: LyricsPhrase[] = [];
 
   constructor() {
     super({ key: SCENE_KEYS.BATTLE });
@@ -143,32 +145,25 @@ export class BattleScene extends Phaser.Scene {
 
     // Player Lyric Buttons
     const lyricsLayout = new GridLayout(this, {
-        width: width,
-        height: height * 0.4,
-        rows: 2,
-        columns: 2,
-        padding: 20,
+      width: width,
+      height: height * 0.4,
+      rows: 2,
+      columns: 2,
+      padding: 20,
     });
 
-    this.lyricsButtons = this.playerLyrics.map((lyric) => {
-      const btn = new TextButton(
-        this,
-        TextButtonOptions.secondary({
-          textConfig: {
-            text: lyric.text.replace('\n', ' / '),
-            style: { ...FONT_STYLES.LYRIC_TEXT, wordWrap: { width: (width / 2) - 60 } },
-          },
-          padding: 10,
-          cornerRadius: 5,
-          onClick: () => this.handlePlayerInput(lyric),
-        }),
-      );
-      return btn;
+    this.lyricsPhrases = this.playerLyrics.map((lyric) => {
+      const phrase = new LyricsPhrase(this, {
+        lyricsPattern: lyric,
+        width: width / 2,
+        onClick: () => this.handlePlayerInput(lyric),
+      });
+      return phrase;
     });
-    lyricsLayout.addContentAt(0, 0, this.lyricsButtons[0]);
-    lyricsLayout.addContentAt(0, 1, this.lyricsButtons[1]);
-    lyricsLayout.addContentAt(1, 0, this.lyricsButtons[2]);
-    lyricsLayout.addContentAt(1, 1, this.lyricsButtons[3]);
+    lyricsLayout.addContentAt(0, 0, this.lyricsPhrases[0]);
+    lyricsLayout.addContentAt(0, 1, this.lyricsPhrases[1]);
+    lyricsLayout.addContentAt(1, 0, this.lyricsPhrases[2]);
+    lyricsLayout.addContentAt(1, 1, this.lyricsPhrases[3]);
 
     // Add the lyrics layout to the main scene, positioned at the bottom
     lyricsLayout.setPosition(width / 2, height * 0.75);
@@ -211,6 +206,7 @@ export class BattleScene extends Phaser.Scene {
 
   private opponentTurn() {
     this.gameState.gamePhase = 'waiting';
+    this.activeLyric = null;
 
     const opponentChoice =
       this.opponentLyrics[Phaser.Math.Between(0, this.opponentLyrics.length - 1)];
@@ -225,18 +221,26 @@ export class BattleScene extends Phaser.Scene {
       text: `[CPU] ${opponentChoice.text.replace('\n', ' / ')}`,
     });
     this.feedbackText.setText({ text: '' });
+    this.lyricsPhrases.forEach((phrase) => phrase.setDisabled(false));
   }
 
   private playerTurn() {
     this.feedbackText.setText({ text: 'YOUR TURN: SELECT!' });
     this.gameState.gamePhase = 'selecting';
     this.playerTurnBeatTime = this.nextBeatTime;
+    this.lyricsPhrases.forEach((phrase) => phrase.setDisabled(false));
   }
 
   private handlePlayerInput(lyric: LyricsPattern): void {
-    if (this.gameState.gamePhase !== 'selecting') return;
+    if (this.gameState.gamePhase !== 'selecting' || this.activeLyric) return;
 
     this.gameState.gamePhase = 'performing';
+    this.activeLyric = lyric;
+    this.lyricsPhrases.forEach((phrase) => {
+      if (phrase.getLyricsPattern().id !== lyric.id) {
+        phrase.setDisabled(true);
+      }
+    });
 
     const timingError = Math.abs(this.time.now - this.playerTurnBeatTime);
     let timingResult: TimingResult;
