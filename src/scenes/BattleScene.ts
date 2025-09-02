@@ -3,6 +3,7 @@ import type { GameState, LyricsPattern, TimingResult } from '../types';
 import {
   BEAT_INTERVAL,
   PERFECT_TIMING_WINDOW,
+  GREAT_TIMING_WINDOW,
   GOOD_TIMING_WINDOW,
   LYRICS_PATTERNS,
   SCENE_KEYS,
@@ -241,8 +242,10 @@ export class BattleScene extends Phaser.Scene {
     let timingResult: TimingResult;
     if (timingError <= PERFECT_TIMING_WINDOW)
       timingResult = { accuracy: 'perfect', score: 50 };
+    else if (timingError <= GREAT_TIMING_WINDOW)
+      timingResult = { accuracy: 'great', score: 30 };
     else if (timingError <= GOOD_TIMING_WINDOW)
-      timingResult = { accuracy: 'good', score: 30 };
+      timingResult = { accuracy: 'good', score: 15 };
     else timingResult = { accuracy: 'miss', score: 0 };
 
     let choiceScore = 0;
@@ -280,8 +283,7 @@ export class BattleScene extends Phaser.Scene {
       this.flashScreen();
     }
 
-    const scoreBreakdown = `Choice: +${choiceScore}\nRhyme: +${rhymeScore}`;
-    this.feedbackText.setText({ text: scoreBreakdown });
+    this.feedbackText.setText({ text: '' });
     this.opponentActionText.setText({ text: '' });
   }
 
@@ -289,7 +291,8 @@ export class BattleScene extends Phaser.Scene {
     const { width, height } = this.scale;
     let color = Colors.toHexString(COLORS.GRAY);
     if (timing.accuracy === 'perfect') color = Colors.toHexString(COLORS.WARNING);
-    if (timing.accuracy === 'good') color = Colors.toHexString(COLORS.SUCCESS);
+    if (timing.accuracy === 'great') color = Colors.toHexString(COLORS.SUCCESS);
+    if (timing.accuracy === 'good') color = Colors.toHexString(COLORS.PRIMARY);
 
     const feedbackText = this.add
       .text(width / 2, height / 2, timing.accuracy.toUpperCase(), {

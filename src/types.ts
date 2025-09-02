@@ -26,6 +26,6 @@ export interface GameData {
 
 // タイミング判定
 export interface TimingResult {
-  accuracy: 'perfect' | 'good' | 'miss';
+  accuracy: 'perfect' | 'great' | 'good' | 'miss';
   score: number;
 }
