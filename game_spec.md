@@ -20,16 +20,16 @@
 #### 1-2. 歌詞パターン例
 ```
 パターンA（攻撃的）:
-「俺のフロウは最強、ビートを支配する
- お前のライムは弱小、勝負にならない」
+- word: 「最強」
+- collocation: 「俺のフロウは...、ビートを支配する / お前のライムは弱小、勝負にならない」
 
 パターンB（技巧的）:
-「韻を踏むのは俺の専門、リズムも完璧
- 君のスタイルじゃこのバトル、勝利は不可能」
+- word: 「専門」
+- collocation: 「韻を踏むのは俺の...、リズムも完璧 / 君のスタイルじゃこのバトル、勝利は不可能」
 
 パターンC（挑発的）:
-「ここは俺のステージ、お前は帰れ
- 実力の差を見せてやる、これが真のMC」
+- word: 「ステージ」
+- collocation: 「ここは俺の...、お前は帰れ / 実力の差を見せてやる、これが真のMC」
 ```
 
 ### 2. バトルフェーズ（リアルタイム）
@@ -38,7 +38,10 @@
 - **UI**: 事前選択した3-4の歌詞パターンがボタンとして表示
 - **操作**: 相手のラップを聞いた後、適切な歌詞を選択してタップ
 - **リズム判定**: 選択後、ビートに合わせて歌詞を「発動」
-- **判定**: Good（±100ms）/ Perfect（±50ms）の2段階精度判定
+- **判定**: Perfect / Great / Goodの3段階精度判定
+  - **Perfect**: ±30ms (コード内: 60ms window)
+  - **Great**: ±60ms (コード内: 120ms window)
+  - **Good**: ±100ms (コード内: 200ms window)
 
 #### 2-2. ターン構成
 - **総ターン数**: 4ターン
@@ -60,7 +63,7 @@
 #### 3-1. スコア算出
 - **歌詞選択得点**: 相手のラップに対する適切性（0-50点）
   - 攻撃的ラップに対して攻撃的歌詞で返す等の適合性
-- **リズム得点**: タイミング精度（Perfect: 50点、Good: 30点）
+- **リズム得点**: タイミング精度（Perfect: 50点、Great: 30点、Good: 15点）
 - **韻評価得点**: 選択した歌詞の韻の巧みさ（事前定義済み、0-30点）
 - **合計**: 各ターン最大130点、4ターンで勝敗判定
 
@@ -134,33 +137,33 @@
 // 歌詞パターンデータ
 interface LyricsPattern {
   id: string;
-  text: string;
+  word: string;
+  collocation: string;
   type: 'attack' | 'technical' | 'counter' | 'closing';
   rhymeScore: number;
-  countersTo: string[];
+  countersTo: Array<'attack' | 'technical' | 'counter' | 'closing'>;
 }
 
 // ゲーム状態
 interface GameState {
   currentTurn: number;
-  selectedLyrics: LyricsPattern | null;
   playerScore: number;
   opponentScore: number;
   beatCount: number;
-  gamePhase: 'selecting' | 'performing' | 'waiting';
+  gamePhase: 'selecting' | 'performing' | 'waiting' | 'result';
+  opponentLyric: LyricsPattern | null; // 現在の相手の歌詞
 }
 
 // Scene間データ共有
 interface GameData {
-  selectedPatterns: LyricsPattern[];
+  selectedPatterns: LyricsPattern[]; // LyricsSelectSceneからBattleSceneへ渡される
   difficulty: 'easy' | 'normal' | 'hard';
   musicBPM: number;
 }
 
 // タイミング判定
 interface TimingResult {
-  accuracy: 'perfect' | 'good' | 'miss';
-  score: number;
+  accuracy: 'perfect' | 'great' | 'good' | 'miss';
   timestamp: number;
 }
 ```

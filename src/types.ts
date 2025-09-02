@@ -28,5 +28,5 @@ export interface GameData {
 // タイミング判定
 export interface TimingResult {
   accuracy: 'perfect' | 'great' | 'good' | 'miss';
-  score: number;
+  timestamp: number;
 }
