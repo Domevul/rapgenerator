@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { COLORS, FONT_STYLES, LYRICS_PATTERNS, SCENE_KEYS } from '../constants';
+import { FONT_STYLES, LYRICS_PATTERNS, SCENE_KEYS } from '../constants';
 import type { LyricsPattern } from '../types';
 import {
+  Colors,
   LinearLayout,
   Styles,
   TextButton,
@@ -15,11 +16,11 @@ export class LyricsSelectScene extends Phaser.Scene {
   private scrollableContainer!: Phaser.GameObjects.Container;
   private scrollMinY: number = 0;
   private scrollMaxY: number = 0;
-  private titleText!: Phaser.GameObjects.Text;
   private maskGraphics!: Phaser.GameObjects.Graphics;
   private lyricButtons: TextButton[] = [];
   private scrollbar!: Phaser.GameObjects.Graphics;
   private scrollbarThumb!: Phaser.GameObjects.Graphics;
+  private scrollbarThumbHeight: number = 0;
   private isDragging = false;
   private dragStartY = 0;
   private contentDragStartY = 0;
@@ -41,7 +42,7 @@ export class LyricsSelectScene extends Phaser.Scene {
     this.input.on('pointerup', this.onPointerUp, this);
   }
 
-  private onResize(gameSize: Phaser.Structs.Size): void {
+  private onResize(): void {
     this.createLayout();
   }
 
@@ -53,7 +54,7 @@ export class LyricsSelectScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
 
-    this.titleText = this.add
+    this.add
       .text(width * 0.5, 50, '歌詞を4つ選択してください', FONT_STYLES.SUBTITLE)
       .setOrigin(0.5);
 
@@ -162,12 +163,12 @@ export class LyricsSelectScene extends Phaser.Scene {
 
     this.scrollbar = this.add
       .graphics()
-      .fillStyle(COLORS.GRAY_DARK, 0.5)
+      .fillStyle(Colors.light, 0.5)
       .fillRect(x, y, 8, height);
 
     this.scrollbarThumb = this.add
       .graphics()
-      .fillStyle(COLORS.GRAY, 1)
+      .fillStyle(Colors.secondary, 1)
       .fillRect(x, y, 8, 50); // Initial thumb
 
     this.scrollbarThumb.setInteractive(
@@ -194,7 +195,7 @@ export class LyricsSelectScene extends Phaser.Scene {
 
     const thumbHeight = scrollAreaHeight * scrollableRatio;
     this.scrollbarThumb.clear();
-    this.scrollbarThumb.fillStyle(COLORS.GRAY, 1);
+    this.scrollbarThumb.fillStyle(Colors.secondary, 1);
     this.scrollbarThumb.fillRect(this.scrollbar.x, this.scrollbar.y, 8, thumbHeight);
 
     const scrollPercentage =
@@ -205,7 +206,7 @@ export class LyricsSelectScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
-    if (this.scrollbarThumb && this.scrollbarThumb.getBounds().contains(pointer.x, pointer.y)) {
+    if (this.scrollbarThumb && this.scrollbarThumb.input.hitArea.contains(pointer.x, pointer.y)) {
       this.isDragging = true;
       this.dragStartY = pointer.y - this.scrollbarThumb.y;
     } else if (this.scrollableContainer.getBounds().contains(pointer.x, pointer.y)) {
