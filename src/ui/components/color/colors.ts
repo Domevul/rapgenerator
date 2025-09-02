@@ -2,21 +2,21 @@ import * as _ from "lodash";
 
 export module Colors {
     /** Blue */
-    export const primary: number = 0x0d6efd;
+    export const primary: number = 0x2196F3;
     /** Gray */
-    export const secondary: number = 0x6c757d;
+    export const secondary: number = 0xE0E0E0;
     /** Green */
-    export const success: number = 0x198754;
+    export const success: number = 0x4CAF50;
     /** Red */
-    export const danger: number = 0xdc3545;
+    export const danger: number = 0xF44336;
     /** Yellow */
-    export const warning: number = 0xffc107;
+    export const warning: number = 0xFFEB3B;
     /** Light Blue */
-    export const info: number = 0x0dcaf0;
+    export const info: number = 0x03A9F4;
     /** Light Gray */
-    export const light: number = 0xf8f9fa;
+    export const light: number = 0xF5F5F5;
     /** Dark Gray */
-    export const dark: number = 0x212529;
+    export const dark: number = 0x212121;
 
     const darkHexValues: string = '01234567';
     const lightHexValues: string = '8abcdef';

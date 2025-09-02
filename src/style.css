@@ -8,13 +8,13 @@ body {
 }
 
 body {
-  background-color: #000;
-  font-family: 'Noto Sans JP', sans-serif;
+  background-color: #f0f0f0;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
 }
 
 #app {
   width: 1600px;
   height: 900px;
   margin: 0 auto;
-  background: #222; /* 任意で背景色 */
+  background: #ffffff; /* 任意で背景色 */
 }

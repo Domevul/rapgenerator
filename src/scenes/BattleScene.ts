@@ -8,7 +8,6 @@ import {
   LYRICS_PATTERNS,
   SCENE_KEYS,
   FONT_STYLES,
-  COLORS,
 } from '../constants';
 import {
   GridLayout,
@@ -265,7 +264,7 @@ export class BattleScene extends Phaser.Scene {
     this.gameState.playerScore += totalScore;
 
     this.updateScoreDisplay();
-    this.showFeedback(timingResult, choiceScore, rhymeScore);
+    this.showFeedback(timing);
     this.advanceTurn();
   }
 
@@ -277,9 +276,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private showFeedback(
-    timing: TimingResult,
-    choiceScore: number,
-    rhymeScore: number,
+    timing: TimingResult
   ): void {
     this.showTimingFeedback(timing);
 
@@ -293,10 +290,10 @@ export class BattleScene extends Phaser.Scene {
 
   private showTimingFeedback(timing: TimingResult): void {
     const { width, height } = this.scale;
-    let color = Colors.toHexString(COLORS.GRAY);
-    if (timing.accuracy === 'perfect') color = Colors.toHexString(COLORS.WARNING);
-    if (timing.accuracy === 'great') color = Colors.toHexString(COLORS.SUCCESS);
-    if (timing.accuracy === 'good') color = Colors.toHexString(COLORS.PRIMARY);
+    let color = Colors.toHexString(Colors.secondary);
+    if (timing.accuracy === 'perfect') color = Colors.toHexString(Colors.warning);
+    if (timing.accuracy === 'great') color = Colors.toHexString(Colors.success);
+    if (timing.accuracy === 'good') color = Colors.toHexString(Colors.primary);
 
     const feedbackText = this.add
       .text(width / 2, height / 2, timing.accuracy.toUpperCase(), {
