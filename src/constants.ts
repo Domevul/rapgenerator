@@ -96,8 +96,9 @@ export const LYRICS_PATTERNS: LyricsPattern[] = [
 
 export const BATTLE_BPM = 90;
 export const BEAT_INTERVAL = 60000 / BATTLE_BPM; // ms per beat
-export const PERFECT_TIMING_WINDOW = 50; // ms
-export const GOOD_TIMING_WINDOW = 100; // ms
+export const PERFECT_TIMING_WINDOW = 60; // ms
+export const GREAT_TIMING_WINDOW = 120; // ms
+export const GOOD_TIMING_WINDOW = 200; // ms
 
 export const SCENE_KEYS = {
   PRELOADER: 'PreloaderScene',
