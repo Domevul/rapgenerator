@@ -24,3 +24,6 @@ export * from "./layout/grid-layout-options";
 export * from "./layout/layout-container";
 export * from "./layout/flex-layout";
 export * from "./layout/flex-layout-options";
+/** Custom */
+export * from "./custom/PhraseButton";
+export * from "./custom/LyricsPhrase";
