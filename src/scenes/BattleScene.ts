@@ -33,6 +33,7 @@ export class BattleScene extends Phaser.Scene {
   private opponentActionText!: TextButton;
   private feedbackText!: TextButton;
   private beatMarker!: TextButton;
+  private activateButton!: TextButton;
   private lyricsPhrases: LyricsPhrase[] = [];
 
   constructor() {
@@ -142,6 +143,16 @@ export class BattleScene extends Phaser.Scene {
     ).setPosition(width / 2, height * 0.2).setVisible(false);
     this.add.existing(this.beatMarker);
 
+    this.activateButton = new TextButton(
+      this,
+      TextButtonOptions.primary({
+        textConfig: { text: 'ACTIVATE!', style: FONT_STYLES.BUTTON },
+        padding: 20,
+        cornerRadius: 10,
+      }),
+    ).setPosition(width / 2, height / 2).setVisible(false);
+    this.add.existing(this.activateButton);
+
     // Player Lyric Buttons
     const lyricsLayout = new GridLayout(this, {
       width: width,
@@ -216,11 +227,13 @@ export class BattleScene extends Phaser.Scene {
     this.gameState.opponentScore += opponentTurnScore;
     this.updateScoreDisplay();
 
+    const fullText = opponentChoice.collocation.replace('...', `[${opponentChoice.word}]`);
     this.opponentActionText.setText({
-      text: `[CPU] ${opponentChoice.text.replace('\n', ' / ')}`,
+      text: `[CPU] ${fullText.replace('\n', ' / ')}`,
     });
     this.feedbackText.setText({ text: '' });
     this.lyricsPhrases.forEach((phrase) => phrase.setDisabled(false));
+    this.activateButton.setVisible(false).setEnabled(false);
   }
 
   private playerTurn() {
@@ -231,15 +244,33 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private handlePlayerInput(lyric: LyricsPattern): void {
-    if (this.gameState.gamePhase !== 'selecting' || this.activeLyric) return;
+    if (this.gameState.gamePhase !== 'selecting') return;
 
-    this.gameState.gamePhase = 'performing';
     this.activeLyric = lyric;
+    this.gameState.gamePhase = 'performing';
+
+    // Visually update buttons
     this.lyricsPhrases.forEach((phrase) => {
       if (phrase.getLyricsPattern().id !== lyric.id) {
         phrase.setDisabled(true);
+      } else {
+        // TODO: Add a visual "selected" state to the button
       }
     });
+
+    this.activateButton.setVisible(true).setEnabled(true);
+    this.activateButton.setOnClick(() => this.handleActivation());
+
+    this.feedbackText.setText({ text: 'GET READY...' });
+  }
+
+  private handleActivation(): void {
+    if (this.gameState.gamePhase !== 'performing' || !this.activeLyric) return;
+
+    // Disable the activate button immediately to prevent multiple clicks
+    this.activateButton.setVisible(false).setEnabled(false).setOnClick(null);
+
+    const lyric = this.activeLyric;
 
     const timingError = Math.abs(this.time.now - this.playerTurnBeatTime);
     let timingResult: TimingResult;
@@ -264,7 +295,7 @@ export class BattleScene extends Phaser.Scene {
     this.gameState.playerScore += totalScore;
 
     this.updateScoreDisplay();
-    this.showFeedback(timing);
+    this.showFeedback(timingResult, lyric);
     this.advanceTurn();
   }
 
@@ -276,16 +307,19 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private showFeedback(
-    timing: TimingResult
+    timing: TimingResult,
+    lyric: LyricsPattern,
   ): void {
     this.showTimingFeedback(timing);
+
+    const fullText = lyric.collocation.replace('...', `[${lyric.word}]`);
+    this.opponentActionText.setText({ text: fullText.replace('\n', ' / ') });
 
     if (timing.accuracy === 'perfect') {
       this.flashScreen();
     }
 
     this.feedbackText.setText({ text: '' });
-    this.opponentActionText.setText({ text: '' });
   }
 
   private showTimingFeedback(timing: TimingResult): void {

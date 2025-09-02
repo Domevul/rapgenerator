@@ -1,7 +1,8 @@
 // 歌詞パターンデータ
 export interface LyricsPattern {
   id: string;
-  text: string;
+  word: string;
+  collocation: string;
   type: 'attack' | 'technical' | 'counter' | 'closing';
   rhymeScore: number;
   countersTo: Array<'attack' | 'technical' | 'counter' | 'closing'>;

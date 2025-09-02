@@ -130,9 +130,10 @@ export class LyricsSelectScene extends Phaser.Scene {
         ? Styles.success()
         : Styles.secondary();
 
+      const fullText = lyric.collocation.replace('...', `[${lyric.word}]`);
       const buttonOptions: TextButtonOptions = {
         textConfig: {
-          text: `[${lyric.type}] ${lyric.text.replace('\n', ' / ')}`,
+          text: `[${lyric.type}] ${fullText.replace('\n', ' / ')}`,
           style: {
             font: FONT_STYLES.LYRIC_TEXT.font,
             color: FONT_STYLES.LYRIC_TEXT.color,
