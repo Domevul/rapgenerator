@@ -24,6 +24,9 @@ export class BattleScene extends Phaser.Scene {
   private playerTurnBeatTime: number = 0;
   private playerLyrics: LyricsPattern[] = [];
   private opponentLyrics: LyricsPattern[] = []; // For MC Rookie
+  private opponentAggressiveLyrics: LyricsPattern[] = [];
+  private opponentChillLyrics: LyricsPattern[] = [];
+  private playerScoreAfterTurn2: number = 0;
   private activeLyric: LyricsPattern | null = null;
 
   // UI Elements
@@ -44,6 +47,12 @@ export class BattleScene extends Phaser.Scene {
     this.playerLyrics = data.selectedLyrics || LYRICS_PATTERNS.slice(0, 4);
     this.opponentLyrics = LYRICS_PATTERNS.filter(
       (p) => p.type === 'attack' || p.type === 'technical',
+    );
+    this.opponentAggressiveLyrics = LYRICS_PATTERNS.filter(
+      (p) => p.type === 'attack',
+    );
+    this.opponentChillLyrics = LYRICS_PATTERNS.filter(
+      (p) => p.type === 'technical',
     );
   }
 
@@ -218,8 +227,22 @@ export class BattleScene extends Phaser.Scene {
     this.gameState.gamePhase = 'waiting';
     this.activeLyric = null;
 
-    const opponentChoice =
-      this.opponentLyrics[Phaser.Math.Between(0, this.opponentLyrics.length - 1)];
+    let opponentChoice: LyricsPattern;
+    const isLateGame = this.gameState.currentTurn >= 3;
+    const scoreThreshold = 130; // Threshold after 2 turns
+
+    if (isLateGame) {
+      const isPlayerWinning = this.playerScoreAfterTurn2 > scoreThreshold;
+      const lyricPool = isPlayerWinning
+        ? this.opponentAggressiveLyrics
+        : this.opponentChillLyrics;
+      opponentChoice = lyricPool[Phaser.Math.Between(0, lyricPool.length - 1)];
+    } else {
+      opponentChoice =
+        this.opponentLyrics[
+          Phaser.Math.Between(0, this.opponentLyrics.length - 1)
+        ];
+    }
     this.gameState.opponentLyric = opponentChoice;
 
     const opponentRhythmScore = Math.random() > 0.2 ? 50 : 30;
@@ -272,15 +295,24 @@ export class BattleScene extends Phaser.Scene {
 
     const lyric = this.activeLyric;
 
-    const timingError = Math.abs(this.time.now - this.playerTurnBeatTime);
+    const now = this.time.now;
+    const timingError = Math.abs(now - this.playerTurnBeatTime);
     let timingResult: TimingResult;
-    if (timingError <= PERFECT_TIMING_WINDOW)
-      timingResult = { accuracy: 'perfect', score: 50 };
-    else if (timingError <= GREAT_TIMING_WINDOW)
-      timingResult = { accuracy: 'great', score: 30 };
-    else if (timingError <= GOOD_TIMING_WINDOW)
-      timingResult = { accuracy: 'good', score: 15 };
-    else timingResult = { accuracy: 'miss', score: 0 };
+    let timingScore = 0;
+
+    if (timingError <= PERFECT_TIMING_WINDOW) {
+      timingResult = { accuracy: 'perfect', timestamp: now };
+      timingScore = 50;
+    } else if (timingError <= GREAT_TIMING_WINDOW) {
+      timingResult = { accuracy: 'great', timestamp: now };
+      timingScore = 30;
+    } else if (timingError <= GOOD_TIMING_WINDOW) {
+      timingResult = { accuracy: 'good', timestamp: now };
+      timingScore = 15;
+    } else {
+      timingResult = { accuracy: 'miss', timestamp: now };
+      timingScore = 0;
+    }
 
     let choiceScore = 0;
     if (
@@ -291,7 +323,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const rhymeScore = lyric.rhymeScore;
-    const totalScore = timingResult.score + choiceScore + rhymeScore;
+    const totalScore = timingScore + choiceScore + rhymeScore;
     this.gameState.playerScore += totalScore;
 
     this.updateScoreDisplay();
@@ -366,6 +398,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private advanceTurn(): void {
+    if (this.gameState.currentTurn === 2) {
+      this.playerScoreAfterTurn2 = this.gameState.playerScore;
+    }
+
     if (this.gameState.currentTurn < 4) {
       this.gameState.currentTurn++;
       this.time.delayedCall(1500, () => {
