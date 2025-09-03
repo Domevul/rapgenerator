@@ -11,15 +11,13 @@ export class PreloaderScene extends Phaser.Scene {
     // this.load.image('player', 'assets/player.png');
     // this.load.audio('battle-music', 'assets/battle-music.mp3');
 
-    this.load.on('complete', () => {
-      this.scene.start(SCENE_KEYS.MAIN_MENU);
-    });
   }
 
   create() {
     const { width, height } = this.scale;
     this.add.text(width / 2, height / 2, 'Loading...', FONT_STYLES.TITLE).setOrigin(0.5);
 
-    // The transition is now handled by the 'complete' event in preload.
+    // Since no assets are loaded, we transition directly to the main menu.
+    this.scene.start(SCENE_KEYS.MAIN_MENU);
   }
 }
